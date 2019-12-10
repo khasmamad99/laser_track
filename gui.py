@@ -1,22 +1,28 @@
 from tkinter import *
 from tkinter.ttk import *
+
 from PIL import Image, ImageTk
 
-main = Tk()
-main.title('Laser Track')
+root = Tk()
+root.geometry("500x500")
 
-scroll = Tk()
 
-scroll.grid()
+pane_list = Frame(root, borderwidth=4)
+pane_list.pack(expand=True, fill=Y, side=LEFT)
+pane_pic = Frame(root, width=300, height=450)
+pane_pic.pack(expand=True, fill=BOTH, side=RIGHT, padx=20, pady=20)
 
-scrollbar = Scrollbar(scroll)
-# scrollbar.grid(row = 0, column = 0, sticky = W, padx = 5, pady = 5, expand = YES)
-scrollbar.pack( side = RIGHT, fill = Y )
-mylist = Listbox(scroll, yscrollcommand = scrollbar.set ) 
+
+scrollbar = Scrollbar(pane_list, height=100)
+scrollbar.pack(expand=False, side=RIGHT)
+listbox = Listbox(pane_list, yscrollcommand=scrollbar.set, height=100)
 for line in range(100): 
-   mylist.insert(END, 'This is line number ' + str(line)) 
-mylist.pack( side = LEFT, fill = BOTH, expand = YES )
+   listbox.insert(END, 'This is line number' + str(line))
 
-scrollbar.config( command = mylist.yview )
+listbox.pack(side=LEFT, fill=BOTH)
+scrollbar.config(command=listbox.yview)
 
-main.mainloop()
+b1 = Button(pane_pic, text = "Click me !") 
+b1.pack(expand = True, fill = BOTH, anchor=CENTER)
+
+root.mainloop()
