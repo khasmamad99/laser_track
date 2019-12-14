@@ -4,6 +4,9 @@ import imutils
 import time
 
 
+MAX_FEATURES = 500
+GOOD_MATCH_PERCENT = 0.15
+
 def order_points(pts):
 	# initialzie a list of coordinates that will be ordered
 	# such that the first entry in the list is the top-left,
@@ -98,11 +101,56 @@ def transform_image(image):
 	return four_point_transform(orig, screenCnt.reshape(4, 2) * ratio)
 
 
-
+def align_images(im1, im2):
+ 
+  # Convert images to grayscale
+  im1Gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
+  im2Gray = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
+   
+  # Detect ORB features and compute descriptors.
+  orb = cv2.ORB_create(MAX_FEATURES)
+  keypoints1, descriptors1 = orb.detectAndCompute(im1Gray, None)
+  keypoints2, descriptors2 = orb.detectAndCompute(im2Gray, None)
+   
+  # Match features.
+  matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
+  matches = matcher.match(descriptors1, descriptors2, None)
+   
+  # Sort matches by score
+  matches.sort(key=lambda x: x.distance, reverse=False)
+ 
+  # Remove not so good matches
+  numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
+  matches = matches[:numGoodMatches]
+ 
+  # Draw top matches
+  imMatches = cv2.drawMatches(im1, keypoints1, im2, keypoints2, matches, None)
+  cv2.imwrite("matches.jpg", imMatches)
+   
+  # Extract location of good matches
+  points1 = np.zeros((len(matches), 2), dtype=np.float32)
+  points2 = np.zeros((len(matches), 2), dtype=np.float32)
+ 
+  for i, match in enumerate(matches):
+    points1[i, :] = keypoints1[match.queryIdx].pt
+    points2[i, :] = keypoints2[match.trainIdx].pt
+   
+  # Find homography
+  h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+ 
+  # Use homography
+  height, width, channels = im2.shape
+  im1Reg = cv2.warpPerspective(im1, h, (width, height))
+   
+  return im1Reg, h
 
 def draw_laser(image):
-	# transform the image
-	warped, transform_M, transform_size = transform_image(image)
+	# # transform the image
+	# warped, transform_M, transform_size = transform_image(image)
+
+	# align images
+	ref_img = cv2.imread("target/target_reference_crop.jpg")
+	warped, h = align_images(image, ref_img)
 
 	# copy warped image to preserve the original
 	warped_copy = warped.copy()
@@ -118,7 +166,7 @@ def draw_laser(image):
 		# set the values of the elements in xth row and yth column to 255 in all image channels
 		m[y, x, :] = 255
 		# get the transformed image matrix
-		m = cv2.warpPerspective(m, transform_M, transform_size)
+		m = cv2.warpPerspective(m, h, (ref_img.shape[1], ref_img.shape[0]))
 		# coordinates of the nonzero elements of m correspond to the coordinates of x, y
 		# in the warped (transformed) image
 		y, x = [i[0] for i in np.nonzero(m)[:-1]]
@@ -153,6 +201,7 @@ def draw_laser(image):
 			# redraw last 0.5s in red
 			end_time = pts[-1][1]
 			x_prev, y_prev = pts[-1][0]
+			count = 1
 			for p in reversed(pts[:-1]):
 				if end_time - p[1] >= 0.5:
 					break
@@ -160,6 +209,8 @@ def draw_laser(image):
 				xi, yi = p[0]
 				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,0,255), 1)
 				x_prev, y_prev = xi, yi
+				count += 1
+			print("points per sec:", count / 0.5)
 			# reset pts
 			pts = []
 
@@ -178,5 +229,5 @@ def draw_laser(image):
 	cv2.destroyAllWindows()
 
 
-# img = cv2.imread("target.jpg")
+# img = cv2.imread("target/2.jpeg")
 # draw_laser(img)
