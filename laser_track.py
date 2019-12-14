@@ -178,5 +178,5 @@ def draw_laser(image):
 	cv2.destroyAllWindows()
 
 
-img = cv2.imread("target.jpg")
-draw_laser(img)
+# img = cv2.imread("target.jpg")
+# draw_laser(img)
