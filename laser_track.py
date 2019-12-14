@@ -205,7 +205,6 @@ def draw_laser(image):
 			for p in reversed(pts[:-1]):
 				if end_time - p[1] >= 0.5:
 					break
-				
 				xi, yi = p[0]
 				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,0,255), 1)
 				x_prev, y_prev = xi, yi

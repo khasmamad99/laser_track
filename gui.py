@@ -6,6 +6,7 @@ from matplotlib import cm
 import cv2
 
 from multiprocessing import Process, Queue
+from datetime import datetime
 
 from laser_track import *
 
@@ -47,7 +48,10 @@ class GUI(Tk):
 		return listbox
 
 	def init_img_panel(self, img):
-		img = Image.open(img)
+		img = cv2.imread(img, 0)
+		ret, thresh1 = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
+		img = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2RGB)
+		img = Image.fromarray(img)
 		img = letterbox_image(img, (self.img_size, self.img_size))
 		img = ImageTk.PhotoImage(img)
 		panel = Label(self, image=img, borderwidth=20)
@@ -71,7 +75,8 @@ def draw(ref_img, image, q):
 	warped, h = align_images(image, ref_img)
 
 	warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-	warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
+	ret, thresh1 = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
+	warped = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2BGR)
 	# copy warped image to preserve the original
 	warped_copy = warped.copy()
 
@@ -115,7 +120,7 @@ def draw(ref_img, image, q):
 				x_prev, y_prev = xi, yi
 				# add current point and its relative time to the list
 				pts.append(([x_prev, y_prev], time.time() - start_time))
-				q.put(warped_copy.copy())
+				q.put((warped_copy.copy(), None))
 
 
 		elif event == cv2.EVENT_LBUTTONUP:
@@ -130,21 +135,21 @@ def draw(ref_img, image, q):
 				
 				xi, yi = p[0]
 				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,0,255), 1)
-				q.put(warped_copy.copy())
 				x_prev, y_prev = xi, yi
 				count += 1
+			q.put((warped_copy.copy(), pts))
 			print("points per sec:", count / 0.5)
 			# reset pts
 			pts = []
 
 	# display original image and the warped image
 	cv2.namedWindow("orig")
-	cv2.namedWindow("warped")
+	#cv2.namedWindow("warped")
 	cv2.setMouseCallback("orig", draw_line)
 	cv2.imshow("orig", image)
 
 	while(True):
-		cv2.imshow("warped", warped_copy)
+		#cv2.imshow("warped", warped_copy)
 		key = cv2.waitKey(1)
 		if key == ord('q'):
 			break
@@ -159,18 +164,22 @@ q = Queue()
 p = Process(target=draw, args=(root.ref_img, img, q))
 p.start()
 
+shoots = {}
+
 def update_image():
 	if not q.empty():
-		img = q.get()
+		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 		root.update_image(img)
+		if pts is not None:
+			now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
+			shoots[now] = pts
+			root.insert_entry(now)
 	root.after(1, update_image)
 
 update_image()
 root.mainloop()
 p.join()
-
-
 
 
 
