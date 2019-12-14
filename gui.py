@@ -175,6 +175,8 @@ def update_image():
 			now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 			shoots[now] = pts
 			root.insert_entry(now)
+
+	selection = root.listbox.curselection()
 	root.after(1, update_image)
 
 update_image()
