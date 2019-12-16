@@ -25,18 +25,51 @@ def letterbox_image(image, size):
 	 return new_image
 
 
+
+class Dialog:
+
+	def __init__(self, parent, title=None):
+		self.top = Toplevel(parent)
+		self.top.columnconfigure(0, minsize=200)
+		self.top.rowconfigure(0, minsize=50)
+		self.top.rowconfigure(1, minsize=50)
+		self.top.resizable(0,0)
+
+		# create option menu
+		self.init_opt = StringVar(self.top)
+		self.init_opt.set("circular1")
+		self.optmenu = OptionMenu(self.top, self.init_opt, "circular1", "circular1", "circular2", "circular3")
+		self.optmenu.grid(row = 0, column = 0, sticky = 'nsew', padx=5, pady=5)
+
+		# create the button
+		b = Button(self.top, text="OK", command=self.ok)
+		b.grid(row = 1, column = 0, sticky='ns', padx=5, pady=5)
+
+	def ok(self):
+		print("selected: ", self.init_opt.get)
+		self.top.destroy()
+
+
+
+
 class GUI(Tk):
-	def __init__(self, img_size=800, ref_img="target/target_reference_crop.jpg"):
+	def __init__(self, img_size=800, ref_img="warped.jpg"):
 		Tk.__init__(self)
 		self.columnconfigure(0, weight=1, minsize=int(img_size / 4))
 		self.columnconfigure(2, weight=3, minsize=int(img_size + 50))
 		self.rowconfigure(0, weight=1, minsize=int(img_size + 100))
 		self.resizable(0, 0)
 
+		self.target = None
+		self.photo_img = None
+		self.ref_img = ref_img
 		self.img_size = img_size
 		self.listbox = self.init_listbox()
-		self.img_panel = self.init_img_panel(ref_img)
-		self.ref_img = ref_img
+		self.img_panel = self.init_img_panel()
+		self.update()
+		d = Dialog(self)
+		self.wait_window(d.top)
+
 
 	def init_listbox(self):
 		pady = 50
@@ -47,23 +80,25 @@ class GUI(Tk):
 		scrollbar.config(command=listbox.yview)
 		return listbox
 
-	def init_img_panel(self, img):
-		img = cv2.imread(img, 0)
-		ret, thresh1 = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
-		img = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2RGB)
-		img = Image.fromarray(img)
-		img = letterbox_image(img, (self.img_size, self.img_size))
-		img = ImageTk.PhotoImage(img)
-		panel = Label(self, image=img, borderwidth=20)
-		panel.image = img
+	def init_img_panel(self):
+		# img = cv2.imread(img, 0)
+		# img = cv2.GaussianBlur(img,(5,5),0)
+		# ret, thresh1 = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
+		# img = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2RGB)
+		# img = Image.fromarray(img)
+		# img = letterbox_image(img, (self.img_size, self.img_size))
+		self.target = cv2.imread("white.jpg", 0)
+		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(self.target), (self.img_size, self.img_size)))
+		panel = Label(self, image=self.photo_img, borderwidth=20)
+		panel.image = self.photo_img
 		panel.grid(row=0, column=2, sticky='nsew')
 		return panel
 
 	def update_image(self, img):
-		self.img = ImageTk.PhotoImage(letterbox_image(
+		self.photo_img = ImageTk.PhotoImage(letterbox_image(
 			 img, (self.img_size, self.img_size)))
-		self.img_panel.configure(image=self.img)
-		self.img_panel.image = self.img
+		self.img_panel.configure(image=self.photo_img)
+		self.img_panel.image = self.photo_img
 
 	def insert_entry(self, entry):
 		self.listbox.insert(END, entry)
@@ -77,6 +112,7 @@ def draw(ref_img, image, q):
 	warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
 	ret, thresh1 = cv2.threshold(warped, 127, 255, cv2.THRESH_BINARY)
 	warped = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2BGR)
+	q.put(warped.copy())
 	# copy warped image to preserve the original
 	warped_copy = warped.copy()
 
@@ -114,7 +150,7 @@ def draw(ref_img, image, q):
 			if drawing == True:
 				xi, yi = get_warped_coords(x, y)
 				# draw a line between current and previous points
-				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,255,0), 1)
+				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,255,0), 2)
 				#gui.update_image(Image.fromarray(cv2.cvtColor(warped_copy, cv2.COLOR_BGR2RGB)))
 				# set previous point to current point
 				x_prev, y_prev = xi, yi
@@ -134,7 +170,7 @@ def draw(ref_img, image, q):
 					break
 				
 				xi, yi = p[0]
-				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,0,255), 1)
+				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,0,255), 2)
 				x_prev, y_prev = xi, yi
 				count += 1
 			q.put((warped_copy.copy(), pts))
@@ -163,93 +199,49 @@ img = cv2.imread("target/2.jpeg")
 q = Queue()
 p = Process(target=draw, args=(root.ref_img, img, q))
 p.start()
-
+root.target = q.get()
+root.update_image(Image.fromarray(root.target))
 shoots = {}
+count = 0
+
+
+def show_selection(event):
+	selection = root.listbox.curselection()
+	if selection:
+		target_copy = root.target.copy()
+		pts = shoots[selection[0]]
+		end_time = pts[-1][1]
+		x_prev, y_prev = pts[-1][0]
+		count = 1
+		for p in reversed(pts[:-1]):
+			if end_time - p[1] >= 0.5:
+				color = (0,255,0)
+			else:
+				color = (0,0,255)
+			xi, yi = p[0]
+			cv2.line(target_copy, (xi, yi), (x_prev, y_prev), color, 2)
+			x_prev, y_prev = xi, yi
+			count += 1
+
+		root.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
+
+
 
 def update_image():
+	global count, shoots
 	if not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 		root.update_image(img)
 		if pts is not None:
 			now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
-			shoots[now] = pts
+			shoots[count] = pts
+			count += 1
 			root.insert_entry(now)
 
-	selection = root.listbox.curselection()
 	root.after(1, update_image)
 
+root.listbox.bind('<Double-1>', show_selection)
 update_image()
 root.mainloop()
 p.join()
-
-
-
-
-
-
-
-
-# img_size = 800
-
-# root = Tk()
-# root.columnconfigure(0, weight=1, minsize=int(img_size / 4))
-# root.columnconfigure(2, weight=3, minsize=int(img_size + 50))
-# root.rowconfigure(0, weight=1, minsize=int(img_size + 100))
-# root.resizable(0,0)
-
-# pady = 50
-# scrollbar = Scrollbar(root)
-# scrollbar.grid(row=0, column=1, sticky='ns', padx=(0,10), pady=pady)
-# listbox = Listbox(root, yscrollcommand=scrollbar.set, font=('Arial',12))
-# for line in range(100): 
-#    listbox.insert(END, 'This is line number ' + str(line))
-
-# listbox.grid(row=0, column=0, sticky='nsew', padx=(10, 0), pady=pady)
-# scrollbar.config(command=listbox.yview)
-
-
-# img = cv2.imread("aligned.jpg")
-# # transform the image
-# warped, transform_M, transform_size = transform_image(img)
-# img = Image.fromarray(cv2.cvtColor(warped, cv2.COLOR_BGR2RGB))
-# img = letterbox_image(img, (img_size, img_size))
-# img = ImageTk.PhotoImage(img)
-# panel = Label(root, image=img, borderwidth=20)
-# panel.grid(row=0, column=2, sticky='nsew')
-
-# root.mainloop()
-
-
-
-
-
-
-# root.geometry("1200x800")
-# root.resizable(0,0)
-
-# pane_list = Frame(root, borderwidth=0, width=500, height=800)
-# pane_list.pack(side=LEFT, fill=None, expand=False)
-# pane_pic = Frame(root, borderwidth=0, width=700, height=800)
-# pane_pic.pack(side=RIGHT, fill=None, expand=False)
-
-
-# scrollbar = Scrollbar(pane_list)
-# scrollbar.pack(expand=YES, side=RIGHT, fill=Y)
-# listbox = Listbox(pane_list, yscrollcommand=scrollbar.set, font=('Comic Sans MS',10))
-# for line in range(100): 
-#    listbox.insert(END, 'This is line number' + str(line))
-
-# listbox.pack(side=LEFT, fill=BOTH, expand=YES)
-# scrollbar.config(command=listbox.yview)
-
-
-# img = ImageTk.PhotoImage(Image.open("target.jpg"))
-# panel = Label(pane_pic, image=img)
-# panel.pack(expand=YES, anchor=CENTER, fill=BOTH)
-
-# pane_list = Frame(root, borderwidth=5)
-# pane_list.grid(column=0, row=0, columnspan=2)
-
-# pane_pic = Frame(root, borderwidth=5)
-# pane_pic.grid(row = 0, column = 2, sticky='nsew')
