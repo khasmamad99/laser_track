@@ -1,11 +1,27 @@
 import cv2
 import numpy as np
-import imutils
 import time
+import imutils
+from PIL import Image
 
 
 MAX_FEATURES = 500
 GOOD_MATCH_PERCENT = 0.15
+
+
+def letterbox_image(image, size):
+	 '''resize image with unchanged aspect ratio using padding'''
+	 iw, ih = image.size
+	 w, h = size
+	 scale = min(w/iw, h/ih)
+	 nw = int(iw*scale)
+	 nh = int(ih*scale)
+
+	 image = image.resize((nw, nh), Image.BICUBIC)
+	 new_image = Image.new('RGB', size, (0, 0, 0))
+	 new_image.paste(image, ((w-nw)//2, (h-nh)//2))
+	 return new_image
+
 
 def order_points(pts):
 	# initialzie a list of coordinates that will be ordered
@@ -122,6 +138,8 @@ def align_images(im1, im2):
   # Remove not so good matches
   numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
   matches = matches[:numGoodMatches]
+
+  print(len(matches))
  
   # Draw top matches
   imMatches = cv2.drawMatches(im1, keypoints1, im2, keypoints2, matches, None)
@@ -205,6 +223,7 @@ def draw_laser(image):
 			for p in reversed(pts[:-1]):
 				if end_time - p[1] >= 0.5:
 					break
+				
 				xi, yi = p[0]
 				cv2.line(warped_copy, (xi, yi), (x_prev, y_prev), (0,0,255), 1)
 				x_prev, y_prev = xi, yi
