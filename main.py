@@ -112,13 +112,80 @@ def draw(ref_img, image, q):
 
 
 
+def webcam(q):
+	cap = cv2.VideoCapture(0)
+	aiming = False
+	stop = False
+	prevLoc = None
+	frame_draw = None
+	brightness_thresh = 250
+	pts = []
+
+	while(True):
+		# Capture frame-by-frame
+		ret, frame = cap.read()
+		if frame_draw is None:
+			frame_draw = frame
+			q.put((frame_draw.copy(), None))
+
+		# Our operations on the frame come here
+		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+		gray = cv2.GaussianBlur(gray, (5,5), 0)
+		(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+		print(maxVal)
+		if not aiming and maxVal > brightness_thresh:
+			aiming = True
+			prevLoc = maxLoc
+		
+		if aiming:
+			if maxVal > brightness_thresh:
+				pts.append((maxLoc, False))
+				if stop: cv2.line(frame_draw, prevLoc, maxLoc, (0,0,255), 2)
+				else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
+				q.put((frame_draw, None))
+				prevLoc = maxLoc
+			elif not stop:
+				stop = True
+				stop_time = time.time()
+				val = 0
+				while time.time() - stop_time < 0.5 and val <= 150:
+					ret, f = cap.read()
+					# q.put((f, None))
+					g = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+					g = cv2.GaussianBlur(g, (5,5), 0)
+					_, val, _, loc = cv2.minMaxLoc(g)
+				if val > brightness_thresh:
+					cv2.circle(frame_draw, (prevLoc), 5, (255,0,0), -1)
+					q.put((frame_draw.copy(), None))
+					pts.append((prevLoc, True))
+					prevLoc = loc
+				else:
+					aiming = False
+					pts = []
+			else:
+				q.put((frame_draw, pts))
+				pts = []
+				frame_draw = None
+				stop = False
+				continue
+
+		# Display the resulting frame
+		#cv2.imshow('frame',frame)
+		# if cv2.waitKey(1) & 0xFF == ord('q'):
+		# 	break
+
+	# When everything done, release the capture
+	cap.release()
+	cv2.destroyAllWindows()
+
 root = GUI(img_size=1000)
-img = cv2.imread("target/2.jpeg")
+#img = cv2.imread("target/2.jpeg")
+#p = Process(target=draw, args=(root.target_img, img, q))
 q = Queue()
-p = Process(target=draw, args=(root.target_img, img, q))
+p = Process(target=webcam, args=(q,))
 p.start()
-root.target = q.get()
-root.update_image(Image.fromarray(root.target))
+root.target = q.get()[0]
+root.update_image(Image.fromarray(cv2.cvtColor(root.target, cv2.COLOR_BGR2BGR)))
 shoots = {}
 count = 0
 
@@ -127,19 +194,33 @@ def show_selection(event):
 	selection = root.listbox.curselection()
 	if selection:
 		target_copy = root.target.copy()
+		# pts = shoots[selection[0]]
+		# end_time = pts[-1][1]
+		# x_prev, y_prev = pts[-1][0]
+		# count = 1
+		# for p in reversed(pts[:-1]):
+		# 	if end_time - p[1] >= 0.5:
+		# 		color = (0,255,0)
+		# 	else:
+		# 		color = (0,0,255)
+		# 	xi, yi = p[0]
+		# 	cv2.line(target_copy, (xi, yi), (x_prev, y_prev), color, 2)
+		# 	x_prev, y_prev = xi, yi
+		# 	count += 1
+
 		pts = shoots[selection[0]]
-		end_time = pts[-1][1]
-		x_prev, y_prev = pts[-1][0]
-		count = 1
-		for p in reversed(pts[:-1]):
-			if end_time - p[1] >= 0.5:
-				color = (0,255,0)
+		prev = pts[0][0]
+		red = False
+		for i in range(1, len(pts)):
+			pt = pts[i]
+			if pt[1]:
+				cv2.circle(target_copy, pt[0], 5, (255,0,0), -1)
+				prev = pts[i+1][0]
+				red = True
 			else:
-				color = (0,0,255)
-			xi, yi = p[0]
-			cv2.line(target_copy, (xi, yi), (x_prev, y_prev), color, 2)
-			x_prev, y_prev = xi, yi
-			count += 1
+				if red: cv2.line(target_copy, prev, pt[0], (0,0,255))
+				else: cv2.line(target_copy, prev, pt[0], (0,255, 0))
+				prev = pt[0]
 
 		root.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
 
@@ -163,3 +244,5 @@ update_image()
 root.mainloop()
 p.join()
 
+
+# TO DO: add a control variable and a button for a new shot (?)
