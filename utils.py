@@ -13,6 +13,25 @@ FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 FLANN_INDEX_LSH    = 6
 
 
+
+def subtract_frames(frame1, frame2):
+	gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+	blur1 = cv2.GaussianBlur(gray1, (3,3), 0)
+	gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+	blur2 = cv2.GaussianBlur(gray2, (3,3), 0)
+	subtracted = cv2.subtract(gray1, gray2)
+	(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(subtracted)
+	print(maxVal)
+	if maxVal > 100:
+		return True, maxLoc[0], maxLoc[1]
+	else: return False, maxLoc[0], maxLoc[1]
+	# nonzero = np.nonzero(sub)
+	# if nonzero[0].size != 0 and nonzero[1].size != 0:
+	# 	y, x = [i[0] for i in nonzero[:-1]]
+	# 	return True, x, y
+	# else: return False, 0, 0
+
+
 def get_warped_coords(x, y, image, ref_img, h):
 	# create a zero matrix with the same shape as the original image
 	m = np.zeros(image.shape)

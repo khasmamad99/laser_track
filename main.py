@@ -6,7 +6,7 @@ import cv2
 import time
 
 from gui import GUI
-from utils import align_images, asift, get_warped_coords
+from utils import align_images, asift, get_warped_coords, subtract_frames
 
 
 
@@ -121,8 +121,8 @@ def webcam(q, ref_img):
 	pts = []
 
 	cap = cv2.VideoCapture(0)
-	cap.set(3, 1920)
-	cap.set(4, 1080)
+	cap.set(3, 1280)
+	cap.set(4, 720)
 	ret, frame = cap.read()
 	prev_frame = frame.copy()
 	warped, h = asift(frame, ref_img)
@@ -130,13 +130,7 @@ def webcam(q, ref_img):
 	warped = cv2.imread("target/circular1.jpg")
 	q.put((warped, None))
 
-	def subtract(frame):
-		sub = cv2.subtract(frame, prev_frame + 50)
-		nonzero = np.nonzero(sub)
-		if nonzero[0].size != 0 and nonzero[1].size != 0:
-			y, x = [i[0] for i in nonzero[:-1]]
-			return True, x, y
-		else: return False, 0, 0
+	
 
 
 	while(True):
@@ -147,7 +141,7 @@ def webcam(q, ref_img):
 		# gray = cv2.GaussianBlur(gray, (5,5), 0)
 		#(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
 		# print(maxVal)
-		retsub, x, y = subtract(frame)
+		retsub, x, y = subtract_frames(frame, prev_frame)
 		maxLoc = get_warped_coords(x, y, frame, warped, h)
 		# print(maxVal)
 		if not aiming and retsub:
@@ -168,7 +162,7 @@ def webcam(q, ref_img):
 				retsub2 = False
 				while time.time() - stop_time < 1 and not retsub2:
 					ret, f = cap.read()
-					retsub2, x2, y2 = subtract(f)
+					retsub2, x2, y2 = subtract_frames(f, prev_frame)
 				if retsub2:
 					cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
 					q.put((frame_draw, None))
