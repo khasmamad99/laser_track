@@ -6,7 +6,7 @@ import cv2
 import time
 
 from gui import GUI
-from utils import align_images
+from utils import align_images, asift, get_warped_coords
 
 
 
@@ -112,33 +112,48 @@ def draw(ref_img, image, q):
 
 
 
-def webcam(q):
-	cap = cv2.VideoCapture(0)
+def webcam(q, ref_img):
 	aiming = False
 	stop = False
 	prevLoc = None
 	frame_draw = None
-	brightness_thresh = 250
+	brightness_thresh = 200
 	pts = []
+
+	cap = cv2.VideoCapture(0)
+	ret, frame = cap.read()
+	prev_frame = frame.copy()
+	warped, h = asift(frame, ref_img)
+	warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
+	q.put((warped, None))
+
+	def subtract(frame):
+		sub = cv2.subtract(frame, prev_frame + 50)
+		nonzero = np.nonzero(sub)
+		if nonzero[0].size != 0 and nonzero[1].size != 0:
+			y, x = [i[0] for i in nonzero[:-1]]
+			return True, x, y
+		else: return False, 0, 0
+
 
 	while(True):
 		# Capture frame-by-frame
 		ret, frame = cap.read()
-		if frame_draw is None:
-			frame_draw = frame
-			q.put((frame_draw.copy(), None))
-
 		# Our operations on the frame come here
-		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		gray = cv2.GaussianBlur(gray, (5,5), 0)
-		(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
-		print(maxVal)
-		if not aiming and maxVal > brightness_thresh:
+		# gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+		# gray = cv2.GaussianBlur(gray, (5,5), 0)
+		#(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+		# print(maxVal)
+		retsub, x, y = subtract(frame)
+		maxLoc = get_warped_coords(x, y, frame, warped, h)
+		# print(maxVal)
+		if not aiming and retsub:
 			aiming = True
 			prevLoc = maxLoc
+			frame_draw = warped.copy()
 		
 		if aiming:
-			if maxVal > brightness_thresh:
+			if retsub:
 				pts.append((maxLoc, False))
 				if stop: cv2.line(frame_draw, prevLoc, maxLoc, (0,0,255), 2)
 				else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
@@ -147,18 +162,15 @@ def webcam(q):
 			elif not stop:
 				stop = True
 				stop_time = time.time()
-				val = 0
-				while time.time() - stop_time < 0.5 and val <= 150:
+				retsub2 = False
+				while time.time() - stop_time < 1 and not retsub2:
 					ret, f = cap.read()
-					# q.put((f, None))
-					g = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
-					g = cv2.GaussianBlur(g, (5,5), 0)
-					_, val, _, loc = cv2.minMaxLoc(g)
-				if val > brightness_thresh:
-					cv2.circle(frame_draw, (prevLoc), 5, (255,0,0), -1)
-					q.put((frame_draw.copy(), None))
+					retsub2, x2, y2 = subtract(f)
+				if retsub2:
+					cv2.circle(frame_draw, prevLoc, 5, (255,0,0), -1)
+					q.put((frame_draw, None))
 					pts.append((prevLoc, True))
-					prevLoc = loc
+					prevLoc = get_warped_coords(x2, y2, frame, warped, h)
 				else:
 					aiming = False
 					pts = []
@@ -167,12 +179,13 @@ def webcam(q):
 				pts = []
 				frame_draw = None
 				stop = False
+				aiming = False
 				continue
 
 		# Display the resulting frame
-		#cv2.imshow('frame',frame)
-		# if cv2.waitKey(1) & 0xFF == ord('q'):
-		# 	break
+		cv2.imshow('frame',frame)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			break
 
 	# When everything done, release the capture
 	cap.release()
@@ -182,10 +195,10 @@ root = GUI(img_size=1000)
 #img = cv2.imread("target/2.jpeg")
 #p = Process(target=draw, args=(root.target_img, img, q))
 q = Queue()
-p = Process(target=webcam, args=(q,))
+p = Process(target=webcam, args=(q, cv2.imread(root.target_img)))
 p.start()
 root.target = q.get()[0]
-root.update_image(Image.fromarray(cv2.cvtColor(root.target, cv2.COLOR_BGR2BGR)))
+root.update_image(Image.fromarray(cv2.cvtColor(root.target, cv2.COLOR_BGR2RGB)))
 shoots = {}
 count = 0
 
@@ -218,8 +231,8 @@ def show_selection(event):
 				prev = pts[i+1][0]
 				red = True
 			else:
-				if red: cv2.line(target_copy, prev, pt[0], (0,0,255))
-				else: cv2.line(target_copy, prev, pt[0], (0,255, 0))
+				if red: cv2.line(target_copy, prev, pt[0], (0,0,255), 2)
+				else: cv2.line(target_copy, prev, pt[0], (0,255, 0), 2)
 				prev = pt[0]
 
 		root.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
