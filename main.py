@@ -121,10 +121,13 @@ def webcam(q, ref_img):
 	pts = []
 
 	cap = cv2.VideoCapture(0)
+	cap.set(3, 1920)
+	cap.set(4, 1080)
 	ret, frame = cap.read()
 	prev_frame = frame.copy()
 	warped, h = asift(frame, ref_img)
-	warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
+	#warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
+	warped = cv2.imread("target/circular1.jpg")
 	q.put((warped, None))
 
 	def subtract(frame):
@@ -167,7 +170,7 @@ def webcam(q, ref_img):
 					ret, f = cap.read()
 					retsub2, x2, y2 = subtract(f)
 				if retsub2:
-					cv2.circle(frame_draw, prevLoc, 5, (255,0,0), -1)
+					cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
 					q.put((frame_draw, None))
 					pts.append((prevLoc, True))
 					prevLoc = get_warped_coords(x2, y2, frame, warped, h)
@@ -227,7 +230,7 @@ def show_selection(event):
 		for i in range(1, len(pts)):
 			pt = pts[i]
 			if pt[1]:
-				cv2.circle(target_copy, pt[0], 5, (255,0,0), -1)
+				cv2.circle(target_copy, pt[0], 15, (255,0,0), -1)
 				prev = pts[i+1][0]
 				red = True
 			else:
@@ -259,3 +262,10 @@ p.join()
 
 
 # TO DO: add a control variable and a button for a new shot (?)
+# TO DO: 3 secs before shot length
+# TO DO: 2  Points
+# TO DO: Change the background
+# TO DO: Single shot (all on the same screen)
+# TO DO: average points (add a button for this)
+# TO DO: 1  laser calibration based on the shooting location
+# TO DO: 3, 4   find circles and track
