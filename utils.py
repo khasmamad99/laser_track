@@ -15,11 +15,14 @@ FLANN_INDEX_LSH    = 6
 
 
 def subtract_frames(frame1, frame2):
+	kernel = np.ones((5,5), np.uint8)
 	gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-	blur1 = cv2.GaussianBlur(gray1, (3,3), 0)
+	blur1 = cv2.GaussianBlur(gray1, (5,5), 0)
+	dil1 = cv2.dilate(blur1, kernel, iterations=1) 
 	gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-	blur2 = cv2.GaussianBlur(gray2, (3,3), 0)
-	subtracted = cv2.subtract(gray1, gray2)
+	blur2 = cv2.GaussianBlur(gray2, (5,5), 0)
+	dil2 = cv2.dilate(blur2, kernel, iterations=1) 
+	subtracted = cv2.subtract(dil1, dil2)
 	(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(subtracted)
 	print(maxVal)
 	if maxVal > 100:

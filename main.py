@@ -136,6 +136,7 @@ def webcam(q, ref_img):
 	while(True):
 		# Capture frame-by-frame
 		ret, frame = cap.read()
+		cv2.imshow("init", frame)
 		# Our operations on the frame come here
 		# gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 		# gray = cv2.GaussianBlur(gray, (5,5), 0)
