@@ -13,6 +13,58 @@ FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 FLANN_INDEX_LSH    = 6
 
 
+def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG(), dilate=False):
+	# resize image
+	h, w, c = image.shape
+	scale = min(640/w, 480/h)
+	im = cv2.resize(image, (int(w*scale), int(h*scale)))
+
+	# find mask
+	mask = subtractor.apply(image)
+	#mask = image
+	if dilate:
+		mask = cv2.erode(mask, np.ones((2,2), np.uint8), iterations=1)
+		mask = cv2.dilate(mask, np.ones((5,5), np.uint8), iterations=1)
+
+	# find avg
+	avg = cv2.mean(mask)[0]
+	if avg > 1 or avg < 0.0001:
+		# if change in the image is too much (change in light/brightness), ignore it
+		return False, None, None
+
+	else:
+		# find circles
+		# detected_circles = cv2.HoughCircles(mask, cv2.HOUGH_GRADIENT, 1, 450, 
+		# 		                            param1 = 50, param2 = 5, minRadius = 3, 
+		# 									maxRadius = 20)
+		# if detected_circles is not None:
+		# 	detected_circles = np.uint16(np.around(detected_circles))[0]
+		# 	detected_circles = sorted(detected_circles, key = lambda x: x[2], reverse=True)
+		# 	mask = cv2.circle(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), (detected_circles[0][0], detected_circles[0][1]), 5, (0,0,255), 2)
+		# 	cv2.imshow("mask", mask)
+		# 	return True, detected_circles[0][0], detected_circles[0][1]
+
+		# else:
+		# 	return False, None, None
+		contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+		if contours:
+			cnt = sorted(contours, key = lambda x: cv2.contourArea(x), reverse=True)[0]
+			if cv2.contourArea(cnt) > 10:
+				M = cv2.moments(cnt)
+				cx = int(M['m10']/M['m00'])
+				cy = int(M['m01']/M['m00'])
+				return  True, cx, cy
+
+			else:
+				return False, None, None
+		else:
+			return False, None, None
+
+								
+
+		
+	
+
 
 def subtract_frames(frame1, frame2):
 	kernel = np.ones((5,5), np.uint8)

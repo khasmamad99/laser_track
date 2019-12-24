@@ -6,7 +6,7 @@ import cv2
 import time
 
 from gui import GUI
-from utils import align_images, asift, get_warped_coords, subtract_frames
+from utils import *
 
 
 
@@ -119,10 +119,9 @@ def webcam(q, ref_img):
 	frame_draw = None
 	brightness_thresh = 200
 	pts = []
+	#subtractor = cv2.createBackgroundSubtractorMOG2()
 
-	cap = cv2.VideoCapture(0)
-	cap.set(3, 1280)
-	cap.set(4, 720)
+	cap = cv2.VideoCapture(2)
 	ret, frame = cap.read()
 	prev_frame = frame.copy()
 	warped, h = asift(frame, ref_img)
@@ -130,19 +129,24 @@ def webcam(q, ref_img):
 	warped = cv2.imread("target/circular1.jpg")
 	q.put((warped, None))
 
-	
-
 
 	while(True):
 		# Capture frame-by-frame
-		ret, frame = cap.read()
-		cv2.imshow("init", frame)
+		_, frame = cap.read()
+		#qcv2.imshow("init", frame)
+		# Display the resulting frame
+		cv2.imshow('frame',frame)
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			break
 		# Our operations on the frame come here
 		# gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 		# gray = cv2.GaussianBlur(gray, (5,5), 0)
 		#(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
 		# print(maxVal)
-		retsub, x, y = subtract_frames(frame, prev_frame)
+		# retsub, x, y = subtract_frames(frame, prev_frame)
+		start = time.time()
+		retsub, x, y = detect_laser(frame)
+		print("detect_laser took:", time.time() - start)
 		maxLoc = get_warped_coords(x, y, frame, warped, h)
 		# print(maxVal)
 		if not aiming and retsub:
@@ -163,7 +167,8 @@ def webcam(q, ref_img):
 				retsub2 = False
 				while time.time() - stop_time < 1 and not retsub2:
 					ret, f = cap.read()
-					retsub2, x2, y2 = subtract_frames(f, prev_frame)
+					# retsub2, x2, y2 = subtract_frames(f, prev_frame)
+					retsub2, x2, y2 = detect_laser(f)
 				if retsub2:
 					cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
 					q.put((frame_draw, None))
@@ -171,6 +176,7 @@ def webcam(q, ref_img):
 					prevLoc = get_warped_coords(x2, y2, frame, warped, h)
 				else:
 					aiming = False
+					stop = False
 					pts = []
 			else:
 				q.put((frame_draw, pts))
@@ -178,18 +184,15 @@ def webcam(q, ref_img):
 				frame_draw = None
 				stop = False
 				aiming = False
-				continue
+				
 
-		# Display the resulting frame
-		cv2.imshow('frame',frame)
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
+
 
 	# When everything done, release the capture
 	cap.release()
 	cv2.destroyAllWindows()
 
-root = GUI(img_size=1000)
+root = GUI(img_size=800)
 #img = cv2.imread("target/2.jpeg")
 #p = Process(target=draw, args=(root.target_img, img, q))
 q = Queue()
