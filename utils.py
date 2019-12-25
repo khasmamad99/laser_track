@@ -97,6 +97,7 @@ def get_warped_coords(x, y, image, ref_img, h):
 	# coordinates of the nonzero elements of m correspond to the coordinates of x, y
 	# in the warped (transformed) image
 	nonzero = np.nonzero(m)
+	print("x: {}, y: {}".format(x, y))
 	if nonzero[0].size == 0 or nonzero[1].size == 0:
 		return None
 	else:

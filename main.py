@@ -145,31 +145,34 @@ def webcam(q, ref_img):
 		# print(maxVal)
 		# retsub, x, y = subtract_frames(frame, prev_frame)
 		start = time.time()
-		retsub, x, y = detect_laser(frame)
+		ret, x, y = detect_laser(frame)
 		print("detect_laser took:", time.time() - start)
 		maxLoc = get_warped_coords(x, y, frame, warped, h)
-		# print(maxVal)
-		if not aiming and retsub:
+		if not aiming and ret:
 			aiming = True
 			prevLoc = maxLoc
 			frame_draw = warped.copy()
 		
 		if aiming:
-			if retsub:
+			if ret:
 				pts.append((maxLoc, False))
-				if stop: cv2.line(frame_draw, prevLoc, maxLoc, (0,0,255), 2)
-				else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
-				q.put((frame_draw, None))
+				# if the previous location is None then start drawing from the current maxLoc
+				if prevLoc is None:
+					prevLoc = maxLoc
+				if maxLoc is not None and prevLoc is not None:
+					if stop: cv2.line(frame_draw, prevLoc, maxLoc, (0,0,255), 2)
+					else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
 				prevLoc = maxLoc
+				q.put((frame_draw, None))
 			elif not stop:
 				stop = True
 				stop_time = time.time()
-				retsub2 = False
-				while time.time() - stop_time < 1 and not retsub2:
+				ret2 = False
+				while time.time() - stop_time < 1 and not ret2:
 					ret, f = cap.read()
 					# retsub2, x2, y2 = subtract_frames(f, prev_frame)
-					retsub2, x2, y2 = detect_laser(f)
-				if retsub2:
+					ret2, x2, y2 = detect_laser(f)
+				if ret2:
 					cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
 					q.put((frame_draw, None))
 					pts.append((prevLoc, True))
