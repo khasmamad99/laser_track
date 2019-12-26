@@ -119,12 +119,9 @@ def webcam(q, ref_img):
 	frame_draw = None
 	pts = []
 
-	cap = cv2.VideoCapture(0)
+	cap = cv2.VideoCapture(2)
 	ret, frame = cap.read()
-	prev_frame = frame.copy()
 	_, h = asift(frame, ref_img)
-	# q.put((warped, None))
-
 
 	while(True):
 		# Capture frame-by-frame
@@ -134,6 +131,7 @@ def webcam(q, ref_img):
 		cv2.imshow('frame', frame)
 		ret, x, y = detect_laser(frame)
 		maxLoc = get_warped_coords(x, y, frame, ref_img, h)
+		print("ret", ret, "aiming", aiming)
 		if not aiming and ret:
 			aiming = True
 			prevLoc = maxLoc
@@ -154,7 +152,7 @@ def webcam(q, ref_img):
 				stop = True
 				stop_time = time.time()
 				ret2 = False
-				while time.time() - stop_time < 1 and not ret2:
+				while time.time() - stop_time < 1 and not ret2: # check if laser gets detected within the next second
 					ret, f = cap.read()
 					ret2, x2, y2 = detect_laser(f)
 				if ret2:

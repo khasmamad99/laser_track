@@ -38,7 +38,7 @@ class GUI(Tk):
 		self.resizable(0, 0)
 
 		self.shoots = {}
-		self.count = {}
+		self.count = 0
 
 		# initialize widgets
 		self.photo_img = None
