@@ -37,12 +37,17 @@ class GUI(Tk):
 		self.rowconfigure(0, weight=1, minsize=int(img_size + 100))
 		self.resizable(0, 0)
 
+		self.shoots = {}
+		self.count = {}
+
 		# initialize widgets
 		self.photo_img = None
 		self.img_size = img_size
 		self.listbox = self.init_listbox()
+		self.listbox.bind('<Double-1>', self.show_selection)
 		self.img_panel = self.init_img_panel()
 		self.update()
+
 
 		# initialize target via a dialog window
 		self.target_img = None
@@ -76,3 +81,29 @@ class GUI(Tk):
 
 	def insert_entry(self, entry):
 		self.listbox.insert(END, entry)
+
+	def show_selection(self, event):
+		selection = self.listbox.curselection()
+		if selection:
+			target_copy = self.target.copy()
+			pts = self.shoots[selection[0]]
+			prev = pts[0][0]
+			red = False
+			for i in range(1, len(pts)):
+				pt = pts[i]
+				if prev is None:
+					prev = pt[0]
+				if pt[0] is not None and prev is not None:
+					if pt[1]:
+						cv2.circle(target_copy, pt[0], 15, (255,0,0), -1)
+						prev = pts[i+1][0]
+						red = True
+					else:
+						if red: cv2.line(target_copy, prev, pt[0], (0,0,255), 2)
+						else: cv2.line(target_copy, prev, pt[0], (0,255, 0), 2)
+						prev = pt[0]
+
+			self.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
+
+# to do: add a button for new shot
+# save the initial target

@@ -117,44 +117,30 @@ def webcam(q, ref_img):
 	stop = False
 	prevLoc = None
 	frame_draw = None
-	brightness_thresh = 200
 	pts = []
-	#subtractor = cv2.createBackgroundSubtractorMOG2()
 
-	cap = cv2.VideoCapture(2)
+	cap = cv2.VideoCapture(0)
 	ret, frame = cap.read()
 	prev_frame = frame.copy()
-	warped, h = asift(frame, ref_img)
-	#warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
-	warped = cv2.imread("target/circular1.jpg")
-	q.put((warped, None))
+	_, h = asift(frame, ref_img)
+	# q.put((warped, None))
 
 
 	while(True):
 		# Capture frame-by-frame
 		_, frame = cap.read()
-		#qcv2.imshow("init", frame)
+
 		# Display the resulting frame
-		cv2.imshow('frame',frame)
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
-		# Our operations on the frame come here
-		# gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		# gray = cv2.GaussianBlur(gray, (5,5), 0)
-		#(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
-		# print(maxVal)
-		# retsub, x, y = subtract_frames(frame, prev_frame)
-		start = time.time()
+		cv2.imshow('frame', frame)
 		ret, x, y = detect_laser(frame)
-		print("detect_laser took:", time.time() - start)
-		maxLoc = get_warped_coords(x, y, frame, warped, h)
+		maxLoc = get_warped_coords(x, y, frame, ref_img, h)
 		if not aiming and ret:
 			aiming = True
 			prevLoc = maxLoc
-			frame_draw = warped.copy()
+			frame_draw = ref_img.copy()
 		
-		if aiming:
-			if ret:
+		if aiming:  # i.e laser has started to be seen
+			if ret: # if laser is detected
 				pts.append((maxLoc, False))
 				# if the previous location is None then start drawing from the current maxLoc
 				if prevLoc is None:
@@ -164,19 +150,18 @@ def webcam(q, ref_img):
 					else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
 				prevLoc = maxLoc
 				q.put((frame_draw, None))
-			elif not stop:
+			elif not stop:	# if laser is currently not detected
 				stop = True
 				stop_time = time.time()
 				ret2 = False
 				while time.time() - stop_time < 1 and not ret2:
 					ret, f = cap.read()
-					# retsub2, x2, y2 = subtract_frames(f, prev_frame)
 					ret2, x2, y2 = detect_laser(f)
 				if ret2:
 					cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
 					q.put((frame_draw, None))
 					pts.append((prevLoc, True))
-					prevLoc = get_warped_coords(x2, y2, frame, warped, h)
+					prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
 				else:
 					aiming = False
 					stop = False
@@ -187,8 +172,10 @@ def webcam(q, ref_img):
 				frame_draw = None
 				stop = False
 				aiming = False
-				
 
+		# break out of the loop if q is pressed		
+		if cv2.waitKey(1) & 0xFF == ord('q'):
+			break
 
 
 	# When everything done, release the capture
@@ -196,67 +183,45 @@ def webcam(q, ref_img):
 	cv2.destroyAllWindows()
 
 root = GUI(img_size=800)
-#img = cv2.imread("target/2.jpeg")
-#p = Process(target=draw, args=(root.target_img, img, q))
 q = Queue()
 p = Process(target=webcam, args=(q, cv2.imread(root.target_img)))
 p.start()
-root.target = q.get()[0]
-root.update_image(Image.fromarray(cv2.cvtColor(root.target, cv2.COLOR_BGR2RGB)))
-shoots = {}
-count = 0
 
 
-def show_selection(event):
-	selection = root.listbox.curselection()
-	if selection:
-		target_copy = root.target.copy()
-		# pts = shoots[selection[0]]
-		# end_time = pts[-1][1]
-		# x_prev, y_prev = pts[-1][0]
-		# count = 1
-		# for p in reversed(pts[:-1]):
-		# 	if end_time - p[1] >= 0.5:
-		# 		color = (0,255,0)
-		# 	else:
-		# 		color = (0,0,255)
-		# 	xi, yi = p[0]
-		# 	cv2.line(target_copy, (xi, yi), (x_prev, y_prev), color, 2)
-		# 	x_prev, y_prev = xi, yi
-		# 	count += 1
+# def show_selection(event):
+# 	selection = root.listbox.curselection()
+# 	if selection:
+# 		target_copy = root.target.copy()
+# 		pts = root.shoots[selection[0]]
+# 		prev = pts[0][0]
+# 		red = False
+# 		for i in range(1, len(pts)):
+# 			pt = pts[i]
+# 			if pt[1]:
+# 				cv2.circle(target_copy, pt[0], 15, (255,0,0), -1)
+# 				prev = pts[i+1][0]
+# 				red = True
+# 			else:
+# 				if red: cv2.line(target_copy, prev, pt[0], (0,0,255), 2)
+# 				else: cv2.line(target_copy, prev, pt[0], (0,255, 0), 2)
+# 				prev = pt[0]
 
-		pts = shoots[selection[0]]
-		prev = pts[0][0]
-		red = False
-		for i in range(1, len(pts)):
-			pt = pts[i]
-			if pt[1]:
-				cv2.circle(target_copy, pt[0], 15, (255,0,0), -1)
-				prev = pts[i+1][0]
-				red = True
-			else:
-				if red: cv2.line(target_copy, prev, pt[0], (0,0,255), 2)
-				else: cv2.line(target_copy, prev, pt[0], (0,255, 0), 2)
-				prev = pt[0]
-
-		root.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
+# 		root.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
 
 
 def update_image():
-	global count, shoots
 	if not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 		root.update_image(img)
 		if pts is not None:
 			now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
-			shoots[count] = pts
-			count += 1
+			root.shoots[root.count] = pts
+			root.count += 1
 			root.insert_entry(now)
-
 	root.after(1, update_image)
 
-root.listbox.bind('<Double-1>', show_selection)
+# root.listbox.bind('<Double-1>', show_selection)
 update_image()
 root.mainloop()
 p.join()
