@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Value
 from datetime import datetime
 from PIL import Image
 import numpy as np
@@ -10,12 +10,13 @@ from utils import *
 
 
 
-def webcam(q, ref_img):
+def webcam(q, rb_value, ref_img):
 	aiming = False
 	stop = False
 	prevLoc = None
 	frame_draw = None
 	pts = []
+	prev_rb_value = rb_value.value
 
 	cap = cv2.VideoCapture(2)
 	ret, frame = cap.read()
@@ -28,45 +29,63 @@ def webcam(q, ref_img):
 		# Display the resulting frame
 		cv2.imshow('frame', frame)
 		ret, x, y = detect_laser(frame)
-		maxLoc = get_warped_coords(x, y, frame, ref_img, h)
-		if not aiming and ret:
-			aiming = True
-			prevLoc = maxLoc
+
+		if rb_value.value != prev_rb_value:
 			frame_draw = ref_img.copy()
+			aiming = False
+			stop = False
+			prev_rb_value = rb_value.value
 		
-		if aiming:  # i.e laser has started to be seen
-			if ret: # if laser is detected
-				pts.append((maxLoc, False))
-				# if the previous location is None then start drawing from the current maxLoc
-				if prevLoc is None:
-					prevLoc = maxLoc
-				if maxLoc is not None and prevLoc is not None:
-					if stop: cv2.line(frame_draw, prevLoc, maxLoc, (0,0,255), 2)
-					else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
+		if rb_value.value == 1: # track
+			maxLoc = get_warped_coords(x, y, frame, ref_img, h)
+			if not aiming and ret:
+				aiming = True
 				prevLoc = maxLoc
-				q.put((frame_draw, None))
-			elif not stop:	# if laser is currently not detected
-				stop = True
-				stop_time = time.time()
-				ret2 = False
-				while time.time() - stop_time < 1 and not ret2: # check if laser gets detected within the next second
-					ret, f = cap.read()
-					ret2, x2, y2 = detect_laser(f)
-				if ret2:
-					cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
+				frame_draw = ref_img.copy()
+			
+			if aiming:  # i.e laser has started to be seen
+				if ret: # if laser is detected
+					pts.append((maxLoc, False))
+					# if the previous location is None then start drawing from the current maxLoc
+					if prevLoc is None:
+						prevLoc = maxLoc
+					if maxLoc is not None and prevLoc is not None:
+						if stop: cv2.line(frame_draw, prevLoc, maxLoc, (0,0,255), 2)
+						else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
+					prevLoc = maxLoc
 					q.put((frame_draw, None))
-					pts.append((prevLoc, True))
-					prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
+				elif not stop:	# if laser is currently not detected
+					stop = True
+					stop_time = time.time()
+					ret2 = False
+					while time.time() - stop_time < 1 and not ret2: # check if laser gets detected within the next second
+						ret, f = cap.read()
+						ret2, x2, y2 = detect_laser(f)
+					if ret2:
+						cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
+						q.put((frame_draw, None))
+						pts.append((prevLoc, True))
+						prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
+					else:
+						aiming = False
+						stop = False
+						pts = []
 				else:
-					aiming = False
-					stop = False
+					q.put((frame_draw, pts))
 					pts = []
-			else:
-				q.put((frame_draw, pts))
-				pts = []
-				frame_draw = None
-				stop = False
+					frame_draw = None
+					stop = False
+					aiming = False
+		elif rb_value.value == 0:
+			if not aiming and ret:
+				aiming = True
+				maxLoc = get_warped_coords(x, y, frame, ref_img, h)
+				cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
+				q.put((frame_draw, [((x, y), True)]))
+			if not ret:
 				aiming = False
+				
+			
 
 		# break out of the loop if q is pressed		
 		if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -78,6 +97,7 @@ def webcam(q, ref_img):
 
 
 def update_image():
+	rb_value.value = root.rb_value.get()
 	if not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -91,10 +111,14 @@ def update_image():
 
 
 
+
+
+
 if __name__ == "__main__":
 	root = GUI(img_size=800)
 	q = Queue()
-	p = Process(target=webcam, args=(q, cv2.imread(root.target_img)))
+	rb_value = Value('i', root.rb_value.get())
+	p = Process(target=webcam, args=(q, rb_value, cv2.imread(root.target_img)))
 	p.start()
 	update_image()
 	root.mainloop()

@@ -55,8 +55,6 @@ class GUI(Tk):
 		Button(self, text="Recalibrate", command=self.recalibrate).grid(row=1, column=4, sticky='nsew')
 		self.update()
 
-
-
 		# initialize target via a dialog window
 		self.target_img = None
 		options = ["circular1", "human1", "human2"]
@@ -67,7 +65,13 @@ class GUI(Tk):
 
 
 	def recalibrate(self):
-		pass
+		self.rb_value = 0
+		self.update
+		
+	
+	def get_rb_value(self):
+		return self.rb_value.get()
+
 
 	def init_listbox(self):
 		pady = 50
@@ -85,14 +89,15 @@ class GUI(Tk):
 		panel.grid(row=0, column=2, columnspan=3, sticky='nsew')
 		return panel
 
+	def print_rb(self):
+		print("TOGGLED", self.rb_value.get())
 
 	def init_radiobuttons(self):
-		self.rb_value = IntVar(self, 0)
-		rb_one_shot = Radiobutton(self, text = "one-shot", variable = self.rb_value,  value=0)
+		self.rb_value = IntVar(self, 1)
+		rb_one_shot = Radiobutton(self, text = "one-shot", variable = self.rb_value,  value=0, command=self.print_rb)
 		rb_one_shot.grid(row=1, column=2, sticky='nsew')
-		rb_track = Radiobutton(self, text = "track", variable=self.rb_value, value=1)
+		rb_track = Radiobutton(self, text = "track", variable=self.rb_value, value=1, command=self.print_rb)
 		rb_track.grid(row=1, column=3, sticky='nsew')
-
 
 
 
@@ -108,25 +113,25 @@ class GUI(Tk):
 	def show_selection(self, event):
 		selection = self.listbox.curselection()
 		if selection:
-			target_copy = self.target.copy()
+			target = cv2.imread(self.target_img)
 			pts = self.shoots[selection[0]]
 			prev = pts[0][0]
 			red = False
-			for i in range(1, len(pts)):
+			for i in range(0, len(pts)):
 				pt = pts[i]
 				if prev is None:
 					prev = pt[0]
 				if pt[0] is not None and prev is not None:
 					if pt[1]:
-						cv2.circle(target_copy, pt[0], 15, (255,0,0), -1)
-						prev = pts[i+1][0]
+						cv2.circle(target, pt[0], 15, (255,0,0), -1)
+						prev = None
 						red = True
 					else:
-						if red: cv2.line(target_copy, prev, pt[0], (0,0,255), 2)
-						else: cv2.line(target_copy, prev, pt[0], (0,255, 0), 2)
+						if red: cv2.line(target, prev, pt[0], (0,0,255), 2)
+						else: cv2.line(target, prev, pt[0], (0,255, 0), 2)
 						prev = pt[0]
 
-			self.update_image(Image.fromarray(cv2.cvtColor(target_copy, cv2.COLOR_BGR2RGB)))
+			self.update_image(Image.fromarray(cv2.cvtColor(target, cv2.COLOR_BGR2RGB)))
 
 # to do: add a button for new shot
 # save the initial target
