@@ -43,11 +43,7 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 		else:
 			return False, None, None
 
-								
-
-		
-	
-
+				
 
 def subtract_frames(frame1, frame2):
 	kernel = np.ones((5,5), np.uint8)

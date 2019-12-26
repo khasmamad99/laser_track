@@ -33,8 +33,12 @@ class GUI(Tk):
 	def __init__(self, img_size=800):
 		Tk.__init__(self)
 		self.columnconfigure(0, weight=1, minsize=int(img_size / 4))
-		self.columnconfigure(2, weight=3, minsize=int(img_size + 50))
+		self.columnconfigure(2, weight=3, minsize=int((img_size + 50)/3))
+		self.columnconfigure(3, weight=3, minsize=int((img_size + 50)/3))
+		self.columnconfigure(4, weight=4, minsize=int((img_size + 50)/3))
 		self.rowconfigure(0, weight=1, minsize=int(img_size + 100))
+		self.rowconfigure(1, weight=1, minsize=50)
+		# self.rowconfigure(2, weight=1, minsize=50)
 		self.resizable(0, 0)
 
 		self.shoots = {}
@@ -46,7 +50,11 @@ class GUI(Tk):
 		self.listbox = self.init_listbox()
 		self.listbox.bind('<Double-1>', self.show_selection)
 		self.img_panel = self.init_img_panel()
+		self.init_radiobuttons()
+		# init recalibrate button
+		Button(self, text="Recalibrate", command=self.recalibrate).grid(row=1, column=4, sticky='nsew')
 		self.update()
+
 
 
 		# initialize target via a dialog window
@@ -57,12 +65,16 @@ class GUI(Tk):
 		self.update_image(Image.open(self.target_img))
 
 
+
+	def recalibrate(self):
+		pass
+
 	def init_listbox(self):
 		pady = 50
 		scrollbar = Scrollbar(self)
-		scrollbar.grid(row=0, column=1, sticky='ns', padx=(0, 10), pady=pady)
+		scrollbar.grid(row=0, column=1, rowspan=2, sticky='ns', padx=(0, 10), pady=pady)
 		listbox = Listbox(self, yscrollcommand=scrollbar.set, font=('Arial', 12))
-		listbox.grid(row=0, column=0, sticky='nsew', padx=(10, 0), pady=pady)
+		listbox.grid(row=0, column=0, rowspan=2, sticky='nsew', padx=(10, 0), pady=pady)
 		scrollbar.config(command=listbox.yview)
 		return listbox
 
@@ -70,8 +82,19 @@ class GUI(Tk):
 		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("white.jpg", 0)), (self.img_size, self.img_size)))
 		panel = Label(self, image=self.photo_img, borderwidth=20)
 		panel.image = self.photo_img
-		panel.grid(row=0, column=2, sticky='nsew')
+		panel.grid(row=0, column=2, columnspan=3, sticky='nsew')
 		return panel
+
+
+	def init_radiobuttons(self):
+		self.rb_value = IntVar(self, 0)
+		rb_one_shot = Radiobutton(self, text = "one-shot", variable = self.rb_value,  value=0)
+		rb_one_shot.grid(row=1, column=2, sticky='nsew')
+		rb_track = Radiobutton(self, text = "track", variable=self.rb_value, value=1)
+		rb_track.grid(row=1, column=3, sticky='nsew')
+
+
+
 
 	def update_image(self, img):
 		self.photo_img = ImageTk.PhotoImage(letterbox_image(
