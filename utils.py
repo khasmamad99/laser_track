@@ -20,8 +20,9 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	im = cv2.resize(image, (int(w*scale), int(h*scale)))
 
 	# find mask
-	mask = subtractor.apply(image)
-	
+	mask = subtractor.apply(image, learningRate=0)
+	cv2.imshow("mask", mask)
+
 	# find avg
 	avg = cv2.mean(mask)[0]
 	if avg > 1 or avg < 0.0001:
@@ -32,6 +33,8 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 		contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		if contours:
 			cnt = sorted(contours, key = lambda x: cv2.contourArea(x), reverse=True)[0]
+			cont = cv2.drawContours(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), [cnt], 0, (0,255,0), 3)
+			cv2.imshow("cont", cont)
 			if cv2.contourArea(cnt) > 10:
 				M = cv2.moments(cnt)
 				cx = int(M['m10']/M['m00'])

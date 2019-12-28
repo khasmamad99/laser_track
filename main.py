@@ -18,7 +18,7 @@ def webcam(q, rb_value, ref_img):
 	pts = []
 	prev_rb_value = rb_value.value
 
-	cap = cv2.VideoCapture(2)
+	cap = cv2.VideoCapture(0)
 	ret, frame = cap.read()
 	_, h = asift(frame, ref_img)
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
 # TO DO: 3 secs before shot length
 # TO DO: 2  Points
 # TO DO: Change the background
-# TO DO: Single shot (all on the same screen)
+# Done: Single shot (all on the same screen)
 # TO DO: average points (add a button for this)
 # TO DO: 1  laser calibration based on the shooting location
 # TO DO: 3, 4   find circles and track
