@@ -10,17 +10,21 @@ from utils import *
 
 
 
-def webcam(q, rb_value, ref_img):
+def webcam(q, rb_value, recalibrate, ref_img):
 	aiming = False
 	stop = False
 	prevLoc = None
 	frame_draw = None
 	pts = []
+	offset = [0, 0]
 	prev_rb_value = rb_value.value
 
 	cap = cv2.VideoCapture(0)
 	ret, frame = cap.read()
 	_, h = asift(frame, ref_img)
+	# lb = np.array(letterbox_image(Image.fromarray(ref_img), (800, 800)))
+	# cv2.imshow("lb", lb)
+
 
 	while(True):
 		# Capture frame-by-frame
@@ -30,6 +34,12 @@ def webcam(q, rb_value, ref_img):
 		cv2.imshow('frame', frame)
 		ret, x, y = detect_laser(frame)
 
+		print(recalibrate.value)
+		if recalibrate.value == 1: # synch of prcesses problem?
+			offset = [0,0]
+			frame_draw = ref_img.copy()
+			q.put((frame_draw, None))
+
 		if rb_value.value != prev_rb_value:
 			frame_draw = ref_img.copy()
 			aiming = False
@@ -38,6 +48,8 @@ def webcam(q, rb_value, ref_img):
 		
 		if rb_value.value == 1: # track
 			maxLoc = get_warped_coords(x, y, frame, ref_img, h)
+			# add calibration offset
+			maxLoc = tuple([i - j for i, j in zip(list(maxLoc), list(offset))]) if maxLoc is not None else None
 			if not aiming and ret:
 				aiming = True
 				prevLoc = maxLoc
@@ -62,6 +74,9 @@ def webcam(q, rb_value, ref_img):
 						ret, f = cap.read()
 						ret2, x2, y2 = detect_laser(f)
 					if ret2:
+						if recalibrate.value == 1:
+							offset = [i - j for i, j in zip(list(prevLoc), [400, 400])] # TO DO: change this to a variable
+							recalibrate.value = 2
 						cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
 						q.put((frame_draw, None))
 						pts.append((prevLoc, True))
@@ -71,7 +86,10 @@ def webcam(q, rb_value, ref_img):
 						stop = False
 						pts = []
 				else:
-					q.put((frame_draw, pts))
+					if recalibrate.value == 0:
+						q.put((frame_draw, pts))
+					else:
+						q.put((frame_draw, None))
 					pts = []
 					frame_draw = None
 					stop = False
@@ -80,8 +98,19 @@ def webcam(q, rb_value, ref_img):
 			if not aiming and ret:
 				aiming = True
 				maxLoc = get_warped_coords(x, y, frame, ref_img, h)
-				cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
-				q.put((frame_draw, [((x, y), True)]))
+				if maxLoc is not None:
+					maxLoc = tuple([i - j for i, j in zip(list(maxLoc), list(offset))])
+					cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
+					# recalibrate
+					if recalibrate.value == 1:
+						offset = [i - j for i, j in zip(list(maxLoc), [400, 400])] # TO DO: change this to a variable
+						recalibrate.value = 2
+					# do not save image (input None instead of pts) if recalibrated
+					if recalibrate.value == 0:
+						q.put((frame_draw, [((x, y), True)]))
+					else:
+						q.put((frame_draw, None))
+				
 			if not ret:
 				aiming = False
 				
@@ -97,7 +126,11 @@ def webcam(q, rb_value, ref_img):
 
 
 def update_image():
+	if recalibrate.value == 2:
+		root.recalibrate = 0
+		recalibrate.value = 0
 	rb_value.value = root.rb_value.get()
+	recalibrate.value = root.recalibrate # 0 : not recalibrating; 1 : recalibrating; 2 : recalibration done
 	if not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -117,8 +150,9 @@ def update_image():
 if __name__ == "__main__":
 	root = GUI(img_size=800)
 	q = Queue()
+	recalibrate = Value('i', root.recalibrate)
 	rb_value = Value('i', root.rb_value.get())
-	p = Process(target=webcam, args=(q, rb_value, cv2.imread(root.target_img)))
+	p = Process(target=webcam, args=(q, rb_value, recalibrate, cv2.imread(root.target_img)))
 	p.start()
 	update_image()
 	root.mainloop()
@@ -129,7 +163,7 @@ if __name__ == "__main__":
 # TO DO: 3 secs before shot length
 # TO DO: 2  Points
 # TO DO: Change the background
-# Done: Single shot (all on the same screen)
+# DONE : Single shot (all on the same screen)
 # TO DO: average points (add a button for this)
 # TO DO: 1  laser calibration based on the shooting location
 # TO DO: 3, 4   find circles and track

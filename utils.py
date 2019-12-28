@@ -27,6 +27,8 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	avg = cv2.mean(mask)[0]
 	if avg > 1 or avg < 0.0001:
 		# if change in the image is too much (change in light/brightness), ignore it
+		if avg > 1:
+			print("Make sure that the camera is stable!")
 		return False, None, None
 
 	else:

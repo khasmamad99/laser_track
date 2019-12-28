@@ -52,7 +52,8 @@ class GUI(Tk):
 		self.img_panel = self.init_img_panel()
 		self.init_radiobuttons()
 		# init recalibrate button
-		Button(self, text="Recalibrate", command=self.recalibrate).grid(row=1, column=4, sticky='nsew')
+		self.recalibrate = 0
+		Button(self, text="Recalibrate", command=self.recalib).grid(row=1, column=4, sticky='nsew')
 		self.update()
 
 		# initialize target via a dialog window
@@ -64,13 +65,8 @@ class GUI(Tk):
 
 
 
-	def recalibrate(self):
-		self.rb_value = 0
-		self.update
-		
-	
-	def get_rb_value(self):
-		return self.rb_value.get()
+	def recalib(self):
+		self.recalibrate = 1
 
 
 	def init_listbox(self):
@@ -82,6 +78,7 @@ class GUI(Tk):
 		scrollbar.config(command=listbox.yview)
 		return listbox
 
+
 	def init_img_panel(self):
 		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("white.jpg", 0)), (self.img_size, self.img_size)))
 		panel = Label(self, image=self.photo_img, borderwidth=20)
@@ -92,6 +89,7 @@ class GUI(Tk):
 	def print_rb(self):
 		print("TOGGLED", self.rb_value.get())
 
+
 	def init_radiobuttons(self):
 		self.rb_value = IntVar(self, 1)
 		rb_one_shot = Radiobutton(self, text = "one-shot", variable = self.rb_value,  value=0, command=self.print_rb)
@@ -100,15 +98,16 @@ class GUI(Tk):
 		rb_track.grid(row=1, column=3, sticky='nsew')
 
 
-
 	def update_image(self, img):
 		self.photo_img = ImageTk.PhotoImage(letterbox_image(
 			 img, (self.img_size, self.img_size)))
 		self.img_panel.configure(image=self.photo_img)
 		self.img_panel.image = self.photo_img
 
+
 	def insert_entry(self, entry):
 		self.listbox.insert(END, entry)
+
 
 	def show_selection(self, event):
 		selection = self.listbox.curselection()
