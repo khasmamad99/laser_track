@@ -12,6 +12,16 @@ GOOD_MATCH_PERCENT = 0.15
 FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 FLANN_INDEX_LSH    = 6
 
+#conts_cheat = np.load("target/circular1.npy", allow_pickle=True)
+
+def score(conts, x, y):
+	for i, cont in enumerate(conts):
+		test = cv2.pointPolygonTest(cont, (x, y), True)
+		print(test)
+		if test	>= 0:
+			return 10 - i
+	return 0
+
 
 def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	# resize image
@@ -20,7 +30,7 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	im = cv2.resize(image, (int(w*scale), int(h*scale)))
 
 	# find mask
-	mask = subtractor.apply(image, learningRate=0)
+	mask = subtractor.apply(image, None, learningRate=0)
 	cv2.imshow("mask", mask)
 
 	# find avg

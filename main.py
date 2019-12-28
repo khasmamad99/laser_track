@@ -10,7 +10,7 @@ from utils import *
 
 
 
-def webcam(q, rb_value, recalibrate, ref_img):
+def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 	aiming = False
 	stop = False
 	prevLoc = None
@@ -35,7 +35,7 @@ def webcam(q, rb_value, recalibrate, ref_img):
 		cv2.imshow('frame', frame)
 		ret, x, y = detect_laser(frame)
 
-		print(recalibrate.value)
+		# print(recalibrate.value)
 		if recalibrate.value == 1: # synch of prcesses problem?
 			offset = [0,0]
 
@@ -47,7 +47,7 @@ def webcam(q, rb_value, recalibrate, ref_img):
 			prev_recalibrate = recalibrate.value
 			q.put((frame_draw, None))
 		
-		print("PREV RECALIB:", prev_recalibrate)
+		# print("PREV RECALIB:", prev_recalibrate)
 		
 		if rb_value.value == 1: # track
 			maxLoc = get_warped_coords(x, y, frame, ref_img, h)
@@ -81,6 +81,8 @@ def webcam(q, rb_value, recalibrate, ref_img):
 							offset = [i - j for i, j in zip(list(prevLoc), [400, 400])] # TO DO: change this to a variable
 							recalibrate.value = 2
 						cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
+						print(prevLoc)
+						print(score(target_conts, *prevLoc))
 						q.put((frame_draw, None))
 						pts.append((prevLoc, True))
 						prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
@@ -106,10 +108,12 @@ def webcam(q, rb_value, recalibrate, ref_img):
 					cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
 					# do not save image (input None instead of pts) if recalibrated
 					if recalibrate.value == 0:
-						q.put((frame_draw, [((x, y), True)]))
+						q.put((frame_draw, [(maxLoc, True)]))
+						print(maxLoc)
+						print(score(target_conts, *maxLoc))
 					elif recalibrate.value == 1:
 						# recalibrate
-						q.put((frame_draw, None))
+						q.put((frame_draw, 999))
 						offset = [i - j for i, j in zip(list(maxLoc), [400, 400])] # TO DO: change this to a variable
 						recalibrate.value = 2
 
@@ -137,6 +141,9 @@ def update_image():
 			root.insert_entry(now)
 
 	if recalibrate.value == 2:
+		img, pts = q.get()
+		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+		root.update_image(img)
 		dial = DialogRecalib(root, title="Recalibration", text="Recalibration is done!")
 		root.wait_window(dial.top)
 		root.recalibrate = 0
@@ -153,7 +160,8 @@ if __name__ == "__main__":
 	q = Queue()
 	recalibrate = Value('i', root.recalibrate)
 	rb_value = Value('i', root.rb_value.get())
-	p = Process(target=webcam, args=(q, rb_value, recalibrate, cv2.imread(root.target_img)))
+	target_conts = np.load(root.target_conts, allow_pickle=True)
+	p = Process(target=webcam, args=(q, rb_value, recalibrate, cv2.imread(root.target_img), target_conts))
 	p.start()
 	update_image()
 	root.mainloop()
@@ -162,9 +170,9 @@ if __name__ == "__main__":
 
 # TO DO: add a control variable and a button for a new shot (?)
 # TO DO: 3 secs before shot length
-# TO DO: 2  Points
+# TO DO: 2 Points
 # TO DO: Change the background
 # DONE : Single shot (all on the same screen)
 # TO DO: average points (add a button for this)
-# TO DO: 1  laser calibration based on the shooting location
+# DONE : 1  laser calibration based on the shooting location
 # TO DO: 3, 4   find circles and track

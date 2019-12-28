@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter.ttk import *
 from PIL import Image, ImageTk
+import numpy as np
 import cv2
 
 from utils import letterbox_image
@@ -28,6 +29,7 @@ class DialogOption:
 		b.grid(row = 1, column = 0, sticky='ns', padx=5, pady=5)
 
 	def ok(self):
+		self.parent.target_conts = "target/" + self.option.get() + ".npy"
 		self.parent.target_img = "target/" + self.option.get() + ".jpg"
 		self.top.destroy()
 
@@ -78,6 +80,7 @@ class GUI(Tk):
 
 		# initialize target via a dialog window
 		self.target_img = None
+		self.target_conts = None
 		options = ["circular1", "human1", "human2"]
 		d_option = DialogOption(self, options=options, title="Select target")
 		self.wait_window(d_option.top)
