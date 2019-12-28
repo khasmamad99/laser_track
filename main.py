@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import time
 
-from gui import GUI
+from gui import GUI, DialogRecalib
 from utils import *
 
 
@@ -18,6 +18,7 @@ def webcam(q, rb_value, recalibrate, ref_img):
 	pts = []
 	offset = [0, 0]
 	prev_rb_value = rb_value.value
+	prev_recalibrate = recalibrate.value
 
 	cap = cv2.VideoCapture(0)
 	ret, frame = cap.read()
@@ -37,14 +38,16 @@ def webcam(q, rb_value, recalibrate, ref_img):
 		print(recalibrate.value)
 		if recalibrate.value == 1: # synch of prcesses problem?
 			offset = [0,0]
-			frame_draw = ref_img.copy()
-			q.put((frame_draw, None))
 
-		if rb_value.value != prev_rb_value:
+		if rb_value.value != prev_rb_value or (recalibrate.value != prev_recalibrate and recalibrate.value != 2):
 			frame_draw = ref_img.copy()
 			aiming = False
 			stop = False
 			prev_rb_value = rb_value.value
+			prev_recalibrate = recalibrate.value
+			q.put((frame_draw, None))
+		
+		print("PREV RECALIB:", prev_recalibrate)
 		
 		if rb_value.value == 1: # track
 			maxLoc = get_warped_coords(x, y, frame, ref_img, h)
@@ -101,21 +104,18 @@ def webcam(q, rb_value, recalibrate, ref_img):
 				if maxLoc is not None:
 					maxLoc = tuple([i - j for i, j in zip(list(maxLoc), list(offset))])
 					cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
-					# recalibrate
-					if recalibrate.value == 1:
-						offset = [i - j for i, j in zip(list(maxLoc), [400, 400])] # TO DO: change this to a variable
-						recalibrate.value = 2
 					# do not save image (input None instead of pts) if recalibrated
 					if recalibrate.value == 0:
 						q.put((frame_draw, [((x, y), True)]))
-					else:
+					elif recalibrate.value == 1:
+						# recalibrate
 						q.put((frame_draw, None))
-				
+						offset = [i - j for i, j in zip(list(maxLoc), [400, 400])] # TO DO: change this to a variable
+						recalibrate.value = 2
+
 			if not ret:
 				aiming = False
 				
-			
-
 		# break out of the loop if q is pressed		
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
@@ -126,12 +126,7 @@ def webcam(q, rb_value, recalibrate, ref_img):
 
 
 def update_image():
-	if recalibrate.value == 2:
-		root.recalibrate = 0
-		recalibrate.value = 0
-	rb_value.value = root.rb_value.get()
-	recalibrate.value = root.recalibrate # 0 : not recalibrating; 1 : recalibrating; 2 : recalibration done
-	if not q.empty():
+	while not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 		root.update_image(img)
@@ -140,10 +135,16 @@ def update_image():
 			root.shoots[root.count] = pts
 			root.count += 1
 			root.insert_entry(now)
+
+	if recalibrate.value == 2:
+		dial = DialogRecalib(root, title="Recalibration", text="Recalibration is done!")
+		root.wait_window(dial.top)
+		root.recalibrate = 0
+		recalibrate.value = 0
+	rb_value.value = root.rb_value.get()
+	recalibrate.value = root.recalibrate # 0 : not recalibrating; 1 : recalibrating; 2 : recalibration done
+
 	root.after(1, update_image)
-
-
-
 
 
 

@@ -5,7 +5,7 @@ import cv2
 
 from utils import letterbox_image
 
-class Dialog:
+class DialogOption:
 	def __init__(self, parent, options=[""], title=None):
 		self.parent = parent
 		self.top = Toplevel(parent)
@@ -13,6 +13,10 @@ class Dialog:
 		self.top.rowconfigure(0, minsize=50)
 		self.top.rowconfigure(1, minsize=50)
 		self.top.resizable(0,0)
+		if title:
+			self.top.title(title)
+		self.top.geometry("+%d+%d" % (parent.winfo_rootx()+int(parent.img_size/2),
+                                  parent.winfo_rooty()+int(parent.img_size/2)))
 
 		# create option menu
 		self.option = StringVar(self.top)
@@ -27,7 +31,23 @@ class Dialog:
 		self.parent.target_img = "target/" + self.option.get() + ".jpg"
 		self.top.destroy()
 
+class DialogRecalib:
+	def __init__(self, parent, title=None, text = ""):
+		top = self.top = Toplevel(parent)
+		self.top.columnconfigure(0, minsize=200)
+		self.top.rowconfigure(0, minsize=50)
+		self.top.rowconfigure(1, minsize=50)
+		self.top.resizable(0,0)
+		if title:
+			self.top.title(title)
+		self.top.geometry("+%d+%d" % (parent.winfo_rootx()+int(parent.img_size/2),
+                                  parent.winfo_rooty()+int(parent.img_size/2)))
+		Label(top, text = text).grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
+		b = Button(self.top, text="OK", command=self.ok)
+		b.grid(row = 1, column = 0, sticky='ns', padx=5, pady=5)
 
+	def ok(self):
+		self.top.destroy()
 
 class GUI(Tk):
 	def __init__(self, img_size=800):
@@ -59,14 +79,16 @@ class GUI(Tk):
 		# initialize target via a dialog window
 		self.target_img = None
 		options = ["circular1", "human1", "human2"]
-		d = Dialog(self, options=options)
-		self.wait_window(d.top)
+		d_option = DialogOption(self, options=options, title="Select target")
+		self.wait_window(d_option.top)
 		self.update_image(Image.open(self.target_img))
 
 
 
 	def recalib(self):
 		self.recalibrate = 1
+		d_recalib = DialogRecalib(self, title="Recalibrate", text="Shoot at 10 to recalibrate")
+		self.wait_window(d_recalib.top)
 
 
 	def init_listbox(self):
