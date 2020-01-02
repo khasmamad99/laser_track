@@ -13,17 +13,22 @@ FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 FLANN_INDEX_LSH    = 6
 
 #conts_cheat = np.load("target/circular1.npy", allow_pickle=True)
+def draw_score(frame, score):
+	text = "SCORE: " + str(score)
+	org_y = frame.shape[0] - 10
+	org_x = 10
+	cv2.putText(frame, text, (int(org_x), int(org_y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2, cv2.LINE_AA)
+
 
 def score(conts, x, y):
 	for i, cont in enumerate(conts):
 		test = cv2.pointPolygonTest(cont, (x, y), True)
-		print(test)
 		if test	>= 0:
 			return 10 - i
 	return 0
 
 
-def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
+def detect_laser(image, dilate = True, erode = False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	# resize image
 	h, w, c = image.shape
 	scale = min(640/w, 480/h)
@@ -31,6 +36,13 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 
 	# find mask
 	mask = subtractor.apply(image, None, learningRate=0)
+	kernel = np.ones((5,5), np.uint8)
+	if erode:
+		mask = cv2.erode(mask, kernel, iterations=1)
+	if dilate:
+		mask = cv2.dilate(mask, kernel, iterations=1)
+
+
 	cv2.imshow("mask", mask)
 
 	# find avg
@@ -39,6 +51,7 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 		# if change in the image is too much (change in light/brightness), ignore it
 		if avg > 1:
 			print("Make sure that the camera is stable!")
+		print("AVG IS FUCKED")
 		return False, None, None
 
 	else:
@@ -47,15 +60,18 @@ def detect_laser(image, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 			cnt = sorted(contours, key = lambda x: cv2.contourArea(x), reverse=True)[0]
 			cont = cv2.drawContours(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), [cnt], 0, (0,255,0), 3)
 			cv2.imshow("cont", cont)
-			if cv2.contourArea(cnt) > 10:
+			print("AREA:", cv2.contourArea(cnt))
+			if cv2.contourArea(cnt) > 5:
 				M = cv2.moments(cnt)
 				cx = int(M['m10']/M['m00'])
 				cy = int(M['m01']/M['m00'])
 				return  True, cx, cy
 
 			else:
+				print("CNT AREA IS FUCKED")
 				return False, None, None
 		else:
+			print("CONTOURS IS PROLY NONE")
 			return False, None, None
 
 				

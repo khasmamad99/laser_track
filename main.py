@@ -19,9 +19,10 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 	offset = [0, 0]
 	prev_rb_value = rb_value.value
 	prev_recalibrate = recalibrate.value
+	target_center = [400,400]
 
-	cap = cv2.VideoCapture(0)
-	ret, frame = cap.read()
+	cap = cv2.VideoCapture(2)
+	_, frame = cap.read()
 	_, h = asift(frame, ref_img)
 	# lb = np.array(letterbox_image(Image.fromarray(ref_img), (800, 800)))
 	# cv2.imshow("lb", lb)
@@ -35,10 +36,13 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 		cv2.imshow('frame', frame)
 		ret, x, y = detect_laser(frame)
 
-		# print(recalibrate.value)
-		if recalibrate.value == 1: # synch of prcesses problem?
+		# reset offset to 0,0 before recalibration
+		if recalibrate.value == 1: # synch of processes problem?
 			offset = [0,0]
 
+		# rb_value (RadioButton value)
+		# 1 : tracking, 0 : one-shot
+		# if there is a change in rb_value or recalibration is started/finished, then reset the background image
 		if rb_value.value != prev_rb_value or (recalibrate.value != prev_recalibrate and recalibrate.value != 2):
 			frame_draw = ref_img.copy()
 			aiming = False
@@ -47,21 +51,27 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 			prev_recalibrate = recalibrate.value
 			q.put((frame_draw, None))
 		
-		# print("PREV RECALIB:", prev_recalibrate)
-		
-		if rb_value.value == 1: # track
+		# tracking
+		if rb_value.value == 1:
+			# transform the coordinates into warped image plane
+			# maxLoc can be None, if x and y are out of the scope of the warped image plane
 			maxLoc = get_warped_coords(x, y, frame, ref_img, h)
 			# add calibration offset
 			maxLoc = tuple([i - j for i, j in zip(list(maxLoc), list(offset))]) if maxLoc is not None else None
+			# if laser is seen for the first time
 			if not aiming and ret:
 				aiming = True
 				prevLoc = maxLoc
 				frame_draw = ref_img.copy()
 			
-			if aiming:  # i.e laser has started to be seen
-				if ret: # if laser is detected
+			# laser has started to be seen (it might or might not be visible currently, the important thing is it was visible very recently)
+			if aiming:
+				# laser is currently visible/is detected
+				if ret:
 					pts.append((maxLoc, False))
 					# if the previous location is None then start drawing from the current maxLoc
+					# laser can go out of the scope of the warped image plane
+					# in this case drawing is started from where the laser enters the warped image plane
 					if prevLoc is None:
 						prevLoc = maxLoc
 					if maxLoc is not None and prevLoc is not None:
@@ -69,20 +79,27 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 						else: cv2.line(frame_draw, prevLoc, maxLoc, (0,255,0), 2)
 					prevLoc = maxLoc
 					q.put((frame_draw, None))
-				elif not stop:	# if laser is currently not detected
+				# if laser is currently not visible/not detected and it's the first time the laser has become invisible
+				elif not stop:
 					stop = True
 					stop_time = time.time()
 					ret2 = False
-					while time.time() - stop_time < 1 and not ret2: # check if laser gets detected within the next second
+					# check if laser gets detected within the next second
+					while time.time() - stop_time < 1 and not ret2:
 						ret, f = cap.read()
 						ret2, x2, y2 = detect_laser(f)
-					if ret2:
-						if recalibrate.value == 1:
-							offset = [i - j for i, j in zip(list(prevLoc), [400, 400])] # TO DO: change this to a variable
-							recalibrate.value = 2
+					# if laser gets detected within the given time and prevLoc is not None
+					if ret2 and prevLoc is not None:
+						# draw the circle in the location, where the laser became invisible
 						cv2.circle(frame_draw, prevLoc, 15, (255,0,0), -1)
-						print(prevLoc)
-						print(score(target_conts, *prevLoc))
+						# set the offset if recalibration button is pressed/recalibration value is 1
+						if recalibrate.value == 1:
+							offset = [i - j for i, j in zip(list(prevLoc), list(target_center))] # TO DO: change this to a variable
+							recalibrate.value = 2
+						# if not recalibrating, draw the score
+						else:
+							scr = score(target_conts, *prevLoc)
+							draw_score(frame_draw, scr)
 						q.put((frame_draw, None))
 						pts.append((prevLoc, True))
 						prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
@@ -108,13 +125,13 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 					cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
 					# do not save image (input None instead of pts) if recalibrated
 					if recalibrate.value == 0:
+						scr = score(target_conts, *maxLoc)
+						draw_score(frame_draw, scr)
 						q.put((frame_draw, [(maxLoc, True)]))
-						print(maxLoc)
-						print(score(target_conts, *maxLoc))
 					elif recalibrate.value == 1:
 						# recalibrate
-						q.put((frame_draw, 999))
-						offset = [i - j for i, j in zip(list(maxLoc), [400, 400])] # TO DO: change this to a variable
+						q.put((frame_draw, None))
+						offset = [i - j for i, j in zip(list(maxLoc), list(target_center))]
 						recalibrate.value = 2
 
 			if not ret:
