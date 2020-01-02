@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import time
+import math
 import imutils
 from PIL import Image
 from multiprocessing.pool import ThreadPool
@@ -13,8 +14,10 @@ FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 FLANN_INDEX_LSH    = 6
 
 #conts_cheat = np.load("target/circular1.npy", allow_pickle=True)
-def draw_score(frame, score):
+def draw_score(frame, score, dist):
 	text = "SCORE: " + str(score)
+	if dist is not None:
+		text = text + "    DISTANCE: " + format(dist, '.2f')
 	org_y = frame.shape[0] - 10
 	org_x = 10
 	cv2.putText(frame, text, (int(org_x), int(org_y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2, cv2.LINE_AA)
@@ -27,6 +30,24 @@ def score(conts, x, y):
 			return 10 - i
 	return 0
 
+
+def calc_distance(pts):
+	dist = 0
+	start = False
+	start_time = None
+	prev_coords = None
+	for pt in reversed(pts):
+		coords, is_circle, _, time = pt
+		if is_circle and not start:
+			start = True
+			prev_coords = coords
+			start_time = time
+		if start and time - start_time < 3:
+				dist += math.sqrt(math.pow((coords[0] - prev_coords[0]), 2) +  math.pow((coords[1] - prev_coords[1]), 2))
+		prev_coords = coords
+
+	return dist
+		
 
 def detect_laser(image, dilate = True, erode = False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	# resize image
@@ -51,7 +72,6 @@ def detect_laser(image, dilate = True, erode = False, subtractor=cv2.bgsegm.crea
 		# if change in the image is too much (change in light/brightness), ignore it
 		if avg > 1:
 			print("Make sure that the camera is stable!")
-		print("AVG IS FUCKED")
 		return False, None, None
 
 	else:
@@ -68,10 +88,8 @@ def detect_laser(image, dilate = True, erode = False, subtractor=cv2.bgsegm.crea
 				return  True, cx, cy
 
 			else:
-				print("CNT AREA IS FUCKED")
 				return False, None, None
 		else:
-			print("CONTOURS IS PROLY NONE")
 			return False, None, None
 
 				

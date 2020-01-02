@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 import numpy as np
 import cv2
 
-from utils import letterbox_image
+from utils import letterbox_image, draw_score
 
 class DialogOption:
 	def __init__(self, parent, options=[""], title=None):
@@ -148,6 +148,9 @@ class GUI(Tk):
 				if pt[0] is not None and prev is not None:
 					if pt[1]:
 						cv2.circle(target, pt[0], 15, (255,0,0), -1)
+						scr = pt[2]
+						dist = pt[3]
+						draw_score(target, scr, dist)
 						prev = None
 						red = True
 					else:
