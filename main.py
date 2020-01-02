@@ -86,7 +86,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 					ret2 = False
 					# check if laser gets detected within the next second
 					while time.time() - stop_time < 1 and not ret2:
-						ret, f = cap.read()
+						_, f = cap.read()
 						ret2, x2, y2 = detect_laser(f)
 					# if laser gets detected within the given time and prevLoc is not None
 					if ret2 and prevLoc is not None:
@@ -126,8 +126,9 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 					# do not save image (input None instead of pts) if recalibrated
 					if recalibrate.value == 0:
 						scr = score(target_conts, *maxLoc)
-						draw_score(frame_draw, scr)
-						q.put((frame_draw, [(maxLoc, True)]))
+						frame_draw_cpy = frame_draw.copy()
+						draw_score(frame_draw_cpy, scr)
+						q.put((frame_draw_cpy, [(maxLoc, True)]))
 					elif recalibrate.value == 1:
 						# recalibrate
 						q.put((frame_draw, None))
