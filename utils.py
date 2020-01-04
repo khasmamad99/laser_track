@@ -14,6 +14,22 @@ FLANN_INDEX_KDTREE = 1  # bug: flann enums are missing
 FLANN_INDEX_LSH = 6
 
 
+
+def letterbox_image(image, size):
+	'''resize image with unchanged aspect ratio using padding'''
+	iw, ih = image.size
+	w, h = size
+	scale = min(w/iw, h/ih)
+	nw = int(iw*scale)
+	nh = int(ih*scale)
+
+	image = image.resize((nw, nh), Image.BICUBIC)
+	new_image = Image.new('RGB', size, (0, 0, 0))
+	new_image.paste(image, ((w-nw)//2, (h-nh)//2))
+	return new_image
+
+
+
 def draw_score(frame, score, dist=None):
 	text = "SCORE: " + str(score)
 	if dist is not None:
@@ -24,7 +40,7 @@ def draw_score(frame, score, dist=None):
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
 
 
-def score(conts, x, y):
+def calc_score(conts, x, y):
 	for i, cont in enumerate(conts):
 		test = cv2.pointPolygonTest(cont, (x, y), True)
 		if test >= 0:
@@ -51,7 +67,7 @@ def calc_distance(pts):
 	return dist
 
 
-def detect_laser(image, dilate=True, erode=False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
+def detect_laser(image, dilate=False, erode=False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
 	# resize image
 	h, w, c = image.shape
 	scale = min(640/w, 480/h)
@@ -76,13 +92,10 @@ def detect_laser(image, dilate=True, erode=False, subtractor=cv2.bgsegm.createBa
 		return False, None, None
 
 	else:
-		contours, hierarchy = cv2.findContours(
-			mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+		contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		if contours:
-			cnt = sorted(contours, key=lambda x: cv2.contourArea(
-				x), reverse=True)[0]
-			cont = cv2.drawContours(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), [
-									cnt], 0, (0, 255, 0), 3)
+			cnt = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)[0]
+			cont = cv2.drawContours(cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR), [cnt], 0, (0, 255, 0), 3)
 			cv2.imshow("cont", cont)
 			print("AREA:", cv2.contourArea(cnt))
 			if cv2.contourArea(cnt) > 5:
@@ -95,28 +108,6 @@ def detect_laser(image, dilate=True, erode=False, subtractor=cv2.bgsegm.createBa
 				return False, None, None
 		else:
 			return False, None, None
-
-
-def subtract_frames(frame1, frame2):
-	kernel = np.ones((5, 5), np.uint8)
-	gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-	blur1 = cv2.GaussianBlur(gray1, (5, 5), 0)
-	dil1 = cv2.dilate(blur1, kernel, iterations=1)
-	gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-	blur2 = cv2.GaussianBlur(gray2, (5, 5), 0)
-	dil2 = cv2.dilate(blur2, kernel, iterations=1)
-	subtracted = cv2.subtract(dil1, dil2)
-	(minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(subtracted)
-	print(maxVal)
-	if maxVal > 100:
-		return True, maxLoc[0], maxLoc[1]
-	else:
-		return False, maxLoc[0], maxLoc[1]
-	# nonzero = np.nonzero(sub)
-	# if nonzero[0].size != 0 and nonzero[1].size != 0:
-	# 	y, x = [i[0] for i in nonzero[:-1]]
-	# 	return True, x, y
-	# else: return False, 0, 0
 
 
 def get_warped_coords(x, y, image, ref_img, h):
@@ -282,65 +273,3 @@ def asift(img1, img2):
 	im1Reg = cv2.warpPerspective(img1, H, (width, height))
 
 	return im1Reg, H
-
-
-def letterbox_image(image, size):
-	'''resize image with unchanged aspect ratio using padding'''
-	iw, ih = image.size
-	w, h = size
-	scale = min(w/iw, h/ih)
-	nw = int(iw*scale)
-	nh = int(ih*scale)
-
-	image = image.resize((nw, nh), Image.BICUBIC)
-	new_image = Image.new('RGB', size, (0, 0, 0))
-	new_image.paste(image, ((w-nw)//2, (h-nh)//2))
-	return new_image
-
-
-def align_images(im1, im2):
-
-	# Convert images to grayscale
-	im1Gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
-	im2Gray = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
-
-	# Detect ORB features and compute descriptors.
-	orb = cv2.ORB_create(MAX_FEATURES)
-	keypoints1, descriptors1 = orb.detectAndCompute(im1Gray, None)
-	keypoints2, descriptors2 = orb.detectAndCompute(im2Gray, None)
-
-	# Match features.
-	matcher = cv2.DescriptorMatcher_create(
-		cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
-	matches = matcher.match(descriptors1, descriptors2, None)
-
-	# Sort matches by score
-	matches.sort(key=lambda x: x.distance, reverse=False)
-
-	# Remove not so good matches
-	numGoodMatches = int(len(matches) * GOOD_MATCH_PERCENT)
-	matches = matches[:numGoodMatches]
-
-	print(len(matches))
-
-	# Draw top matches
-	imMatches = cv2.drawMatches(
-		im1, keypoints1, im2, keypoints2, matches, None)
-	cv2.imwrite("matches.jpg", imMatches)
-
-	# Extract location of good matches
-	points1 = np.zeros((len(matches), 2), dtype=np.float32)
-	points2 = np.zeros((len(matches), 2), dtype=np.float32)
-
-	for i, match in enumerate(matches):
-		points1[i, :] = keypoints1[match.queryIdx].pt
-		points2[i, :] = keypoints2[match.trainIdx].pt
-
-	# Find homography
-	h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-
-	# Use homography
-	height, width, channels = im2.shape
-	im1Reg = cv2.warpPerspective(im1, h, (width, height))
-
-	return im1Reg, h

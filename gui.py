@@ -131,7 +131,9 @@ class GUI(Tk):
 		self.img_panel.image = self.photo_img
 
 
-	def insert_entry(self, entry):
+	def insert_entry(self, entry, pts):
+		self.shoots[root.count] = pts
+		self.count += 1
 		self.listbox.insert(END, entry)
 
 

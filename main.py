@@ -32,7 +32,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 
 		# Display the resulting frame
 		cv2.imshow('frame', frame)
-		ret, x, y = detect_laser(frame)
+		ret, x, y = detect_laser(frame, dilate=True)
 
 		# reset offset to 0,0 before recalibration
 		if recalibrate.value == 1: # synch of processes problem?
@@ -97,7 +97,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 							recalibrate.value = 2
 						# if not recalibrating, draw the score and distance
 						else:
-							scr = score(target_conts, *prevLoc)
+							scr = calc_score(target_conts, *prevLoc)
 							pts.append((prevLoc, True, scr, time.time()))
 							distance = calc_distance(pts)
 							draw_score(frame_draw, scr, distance)
@@ -125,7 +125,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 					cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
 					# do not save image (input None instead of pts) if recalibrated
 					if recalibrate.value == 0:
-						scr = score(target_conts, *maxLoc)
+						scr = calc_score(target_conts, *maxLoc)
 						frame_draw_cpy = frame_draw.copy()
 						draw_score(frame_draw_cpy, scr, None)
 						q.put((frame_draw_cpy, [(maxLoc, True, scr, None)]))
@@ -147,7 +147,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 	cv2.destroyAllWindows()
 
 
-def update_image():
+def update_gui():
 	while not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -169,7 +169,7 @@ def update_image():
 	rb_value.value = root.rb_value.get()
 	recalibrate.value = root.recalibrate # 0 : not recalibrating; 1 : recalibrating; 2 : recalibration done
 
-	root.after(1, update_image)
+	root.after(1, update_gui)
 
 
 
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 	target_conts = np.load(root.target_conts, allow_pickle=True)
 	p = Process(target=webcam, args=(q, rb_value, recalibrate, cv2.imread(root.target_img), target_conts))
 	p.start()
-	update_image()
+	update_gui()
 	root.mainloop()
 	p.join()
 
