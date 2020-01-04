@@ -21,11 +21,9 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 	prev_recalibrate = recalibrate.value
 	target_center = [400,400]
 
-	cap = cv2.VideoCapture(2)
+	cap = cv2.VideoCapture(0)
 	_, frame = cap.read()
 	_, h = asift(frame, ref_img)
-	# lb = np.array(letterbox_image(Image.fromarray(ref_img), (800, 800)))
-	# cv2.imshow("lb", lb)
 
 
 	while(True):
@@ -129,7 +127,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 					if recalibrate.value == 0:
 						scr = score(target_conts, *maxLoc)
 						frame_draw_cpy = frame_draw.copy()
-						draw_score(frame_draw_cpy, scr)
+						draw_score(frame_draw_cpy, scr, None)
 						q.put((frame_draw_cpy, [(maxLoc, True, scr, None)]))
 					elif recalibrate.value == 1:
 						# recalibrate
@@ -196,3 +194,4 @@ if __name__ == "__main__":
 # TO DO: average points (add a button for this)
 # DONE : 1  laser calibration based on the shooting location
 # TO DO: 3, 4   find circles and track
+# TO DO: add offset to the real coords
