@@ -105,7 +105,7 @@ class GUI(Tk):
 
 
 	def init_img_panel(self):
-		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("white.jpg", 0)), (self.img_size, self.img_size)))
+		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("target/white.jpg", 0)), (self.img_size, self.img_size)))
 		panel = Label(self, image=self.photo_img, borderwidth=20)
 		panel.image = self.photo_img
 		panel.grid(row=0, column=2, columnspan=3, sticky='nsew')
