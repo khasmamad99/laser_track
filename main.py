@@ -195,3 +195,5 @@ if __name__ == "__main__":
 # DONE : 1  laser calibration based on the shooting location
 # TO DO: 3, 4   find circles and track
 # TO DO: add offset to the real coords
+# TO DO: pixel to mm
+# TO DO: other targets
