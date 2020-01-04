@@ -6,8 +6,9 @@ import cv2
 
 from utils import letterbox_image, draw_score
 
-class DialogOption:
-	def __init__(self, parent, options=[""], title=None):
+
+class Dialog:
+	def __init__(self, parent, title=None):
 		self.parent = parent
 		self.top = Toplevel(parent)
 		self.top.columnconfigure(0, minsize=200)
@@ -18,6 +19,11 @@ class DialogOption:
 			self.top.title(title)
 		self.top.geometry("+%d+%d" % (parent.winfo_rootx()+int(parent.img_size/2),
                                   parent.winfo_rooty()+int(parent.img_size/2)))
+
+
+class DialogOption(Dialog):
+	def __init__(self, parent, title=None, options=[""]):
+		Dialog.__init__(self, parent, title)
 
 		# create option menu
 		self.option = StringVar(self.top)
@@ -35,16 +41,11 @@ class DialogOption:
 
 class DialogRecalib:
 	def __init__(self, parent, title=None, text = ""):
-		top = self.top = Toplevel(parent)
-		self.top.columnconfigure(0, minsize=200)
-		self.top.rowconfigure(0, minsize=50)
-		self.top.rowconfigure(1, minsize=50)
-		self.top.resizable(0,0)
-		if title:
-			self.top.title(title)
-		self.top.geometry("+%d+%d" % (parent.winfo_rootx()+int(parent.img_size/2),
-                                  parent.winfo_rooty()+int(parent.img_size/2)))
-		Label(top, text = text).grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
+		Dialog.__init__(self, parent, title)
+
+		# create label
+		Label(self.top, text = text).grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
+		# create button
 		b = Button(self.top, text="OK", command=self.ok)
 		b.grid(row = 1, column = 0, sticky='ns', padx=5, pady=5)
 
@@ -105,7 +106,7 @@ class GUI(Tk):
 
 
 	def init_img_panel(self):
-		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("white.jpg", 0)), (self.img_size, self.img_size)))
+		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("target/white.jpg", 0)), (self.img_size, self.img_size)))
 		panel = Label(self, image=self.photo_img, borderwidth=20)
 		panel.image = self.photo_img
 		panel.grid(row=0, column=2, columnspan=3, sticky='nsew')
