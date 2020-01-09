@@ -15,6 +15,20 @@ FLANN_INDEX_LSH = 6
 
 
 
+def find_center(center_coords, org_size, new_size):
+	# finds the center of the resized target
+	center_x, center_y = center_coords
+	org_w, org_h = org_size
+	new_w, new_h = new_size
+	scale = min(new_w/org_w, new_h/org_h)
+	nw = int(org_w*scale)
+	nh = int(org_h*scale)
+	new_center_x = int(center_x*scale + (new_w-nw)/2)
+	new_center_y = int(center_y*scale + (new_h - nh)/2)
+
+	return [new_center_x, new_center_y]
+	
+
 def letterbox_image(image, size):
 	'''resize image with unchanged aspect ratio using padding'''
 	iw, ih = image.size

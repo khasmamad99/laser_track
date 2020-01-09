@@ -40,7 +40,8 @@ def draw(root, q):
 	target = root.target
 	ref_img = cv2.imread(target["img_path"])
 	target_conts = np.load(target["contours_npy"], allow_pickle=True)
-	target_center = target["center_coords"][0] / ref_img.shape[1] * root.img_size, \
+	target_center = find_center(target["center_coords"], (ref_img.shape[1], ref_img.shape[0]), (root.img_size, root.img_size)) 
+		target["center_coords"][0] / ref_img.shape[1] * root.img_size, \
 					target["center_coords"][1] / ref_img.shape[0] * root.img_size
 	h = None
 
