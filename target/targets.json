@@ -1,0 +1,14 @@
+{
+    "circular_10" : {
+        "img_path" : "target/data/circular_10.jpg",
+        "contours_npy" : "target/data/circular_10.npy",
+        "center_coords" : [575, 575],
+        "real_size": [200, 200]
+    },
+    "human" : {
+        "img_path" : "target/data/human.jpg",
+        "contours_npy" : "target/data/human.npy",
+        "center_coords" : [575, 575],
+        "real_size": [200, 200]
+    }
+}

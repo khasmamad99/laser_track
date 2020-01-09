@@ -20,14 +20,12 @@ def webcam(q, id = 0, show = False):
 			cv2.imshow('frame', frame)
 			cv2.waitKey(1)
 
-		ret, x, y = detect_laser(frame)
+		ret, x, y = detect_laser(frame, dilate=True)
 		q.put((frame, ret, x, y))
 
 	# When everything done, release the capture
 	cap.release()
 	cv2.destroyAllWindows()
-
-
 
 
 def draw(root, q):
@@ -39,9 +37,11 @@ def draw(root, q):
 	offset = [0, 0]
 	prev_rb_value = root.rb_value.get()
 	prev_recalibrate = root.recalibrate
-	target_center = [int(root.img_size/2), int(root.img_size/2)]
-	target_conts = root.target_conts
-	ref_img = cv2.imread(root.target_img)
+	target = root.target
+	ref_img = cv2.imread(target["img_path"])
+	target_conts = np.load(target["contours_npy"], allow_pickle=True)
+	target_center = target["center_coords"][0] / ref_img.shape[1] * root.img_size, \
+					target["center_coords"][1] / ref_img.shape[0] * root.img_size
 	h = None
 
 	if not q.empty():
@@ -55,13 +55,13 @@ def draw(root, q):
 		while not q.empty():
 			frame, ret, x, y = q.get()
 			# reset offset to 0,0 before recalibration
-			if root.root.recalibrate == 1:
+			if root.recalibrate == 1:
 				offset = [0,0]
 
 			# rb_value (RadioButton value)
 			# 1 : tracking, 0 : one-shot
 			# if there is a change in rb_value or recalibration is started/finished, then reset the background image
-			if root.rb_value.get() != prev_rb_value or (root.recalibrate != root.recalibrate and root.recalibrate != 2):
+			if root.rb_value.get() != prev_rb_value or root.recalibrate != root.recalibrate:
 				frame_draw = ref_img.copy()
 				aiming = False
 				stop = False
@@ -104,7 +104,8 @@ def draw(root, q):
 						ret2 = False
 						# check if laser gets detected within the next second
 						while time.time() - stop_time < 1 and not ret2:
-							_, ret2, x2, y2 = q.get()
+							if not q.empty():
+								_, ret2, x2, y2 = q.get()
 						# if laser gets detected within the given time and prevLoc is not None
 						if ret2 and prevLoc is not None:
 							scr = None
@@ -125,19 +126,24 @@ def draw(root, q):
 								draw_score(frame_draw, scr, distance)
 							root.update_image(Image.fromarray(cv2.cvtColor(frame_draw, cv2.COLOR_BGR2RGB)))
 							prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
+						# if laser is not detected within the given time
 						else:
 							aiming = False
 							stop = False
 							pts = []
+					# if shooting is done (ret is false and stop is true)
 					else:
+						# if not recalibrating, add the shot to the list
 						if root.recalibrate == 0:
 							now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
 							root.insert_entry(now, pts)
 						root.update_image(Image.fromarray(cv2.cvtColor(frame_draw, cv2.COLOR_BGR2RGB)))
+						# reset
 						pts = []
 						frame_draw = None
 						stop = False
 						aiming = False
+			# one-shot
 			elif root.rb_value.get() == 0:
 				if not aiming and ret:
 					aiming = True
@@ -163,4 +169,14 @@ def draw(root, q):
 
 				if not ret:
 					aiming = False
-				
+		root.after(1, update_gui)
+			
+
+if __name__ == "__main__":
+	root = GUI(img_size=800)
+	q = Queue()
+	p = Process(target=webcam, args=(q,))
+	p.start()
+	draw(root, q)
+	root.mainloop()
+	p.join()
