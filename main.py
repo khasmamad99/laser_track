@@ -10,7 +10,7 @@ from utils import *
 
 
 
-def webcam(q, rb_value, recalibrate, ref_img, target_conts):
+def webcam(q, rb_value, recalibrate, ref_img, target_conts, img_size):
 	aiming = False
 	stop = False
 	prevLoc = None
@@ -19,7 +19,7 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 	offset = [0, 0]
 	prev_rb_value = rb_value.value
 	prev_recalibrate = recalibrate.value
-	target_center = [400,400]
+	target_center = [int(img_size/2), int(img_size/2)]
 
 	cap = cv2.VideoCapture(0)
 	_, frame = cap.read()
@@ -99,7 +99,8 @@ def webcam(q, rb_value, recalibrate, ref_img, target_conts):
 						else:
 							scr = calc_score(target_conts, *prevLoc)
 							pts.append((prevLoc, True, scr, time.time()))
-							distance = calc_distance(pts)
+							# real size of the picture is approximately 200mm x 200mm
+							distance = calc_distance(pts, (200, 200), (img_size, img_size))
 							draw_score(frame_draw, scr, distance)
 						q.put((frame_draw, None))
 						prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
@@ -179,7 +180,7 @@ if __name__ == "__main__":
 	recalibrate = Value('i', root.recalibrate)
 	rb_value = Value('i', root.rb_value.get())
 	target_conts = np.load(root.target_conts, allow_pickle=True)
-	p = Process(target=webcam, args=(q, rb_value, recalibrate, cv2.imread(root.target_img), target_conts))
+	p = Process(target=webcam, args=(q, rb_value, recalibrate, cv2.imread(root.target_img), target_conts, root.img_size))
 	p.start()
 	update_gui()
 	root.mainloop()

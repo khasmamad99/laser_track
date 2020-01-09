@@ -29,7 +29,6 @@ def letterbox_image(image, size):
 	return new_image
 
 
-
 def draw_score(frame, score, dist=None):
 	text = "SCORE: " + str(score)
 	if dist is not None:
@@ -48,7 +47,7 @@ def calc_score(conts, x, y):
 	return 0
 
 
-def calc_distance(pts):
+def calc_distance(pts, real_size, pixel_size):
 	dist = 0
 	start = False
 	start_time = None
@@ -64,7 +63,14 @@ def calc_distance(pts):
 									   2) + math.pow((coords[1] - prev_coords[1]), 2))
 		prev_coords = coords
 
-	return dist
+	# convert to mm
+	real_w, real_h = real_size
+	pixel_w, pixel_h = pixel_size
+	real_area = real_w * real_h
+	pixel_area = pixel_h * pixel_w
+	scale = real_area / pixel_area
+	real_dist = dist * scale
+	return real_dist
 
 
 def detect_laser(image, dilate=False, erode=False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
@@ -271,5 +277,8 @@ def asift(img1, img2):
 	# Use homography
 	height, width = img2.shape
 	im1Reg = cv2.warpPerspective(img1, H, (width, height))
+
+	cv2.imshow("warped", im1Reg)
+	cv2.waitKey(1)
 
 	return im1Reg, H
