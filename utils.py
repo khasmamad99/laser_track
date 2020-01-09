@@ -53,12 +53,20 @@ def draw_score(frame, score, dist=None):
 				cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
 
 
-def calc_score(conts, x, y):
-	for i, cont in enumerate(conts):
-		test = cv2.pointPolygonTest(cont, (x, y), True)
-		if test >= 0:
-			return 10 - i
-	return 0
+def calc_score(conts, target_name, x, y):
+	if target_name == "circular_10":
+		for i, cont in enumerate(conts):
+			test = cv2.pointPolygonTest(cont, (x, y), True)
+			if test >= 0:
+				return 10 - i
+		return 0
+	elif target_name == "human":
+		for i, cont in enumerate(conts):
+			test = cv2.pointPolygonTest(cont, (x, y), True)
+			if test >= 0:
+				return "Success"
+		return "Fail"
+
 
 
 def calc_distance(pts, real_size, pixel_size):

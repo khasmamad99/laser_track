@@ -37,12 +37,11 @@ def draw(root, q):
 	offset = [0, 0]
 	prev_rb_value = root.rb_value.get()
 	prev_recalibrate = root.recalibrate
-	target = root.target
+	target = root.target_dict
 	ref_img = cv2.imread(target["img_path"])
 	target_conts = np.load(target["contours_npy"], allow_pickle=True)
 	target_center = find_center(target["center_coords"], (ref_img.shape[1], ref_img.shape[0]), (root.img_size, root.img_size)) 
-		target["center_coords"][0] / ref_img.shape[1] * root.img_size, \
-					target["center_coords"][1] / ref_img.shape[0] * root.img_size
+		
 	h = None
 
 	if not q.empty():
@@ -121,7 +120,7 @@ def draw(root, q):
 								root.recalibrate = 0
 							# if not recalibrating, draw the score and distance
 							else:
-								scr = calc_score(target_conts, *prevLoc)
+								scr = calc_score(target_conts, root.target_name, *maxLoc )
 								pts.append((prevLoc, True, scr, time.time()))
 								distance = calc_distance(pts)
 								draw_score(frame_draw, scr, distance)
@@ -154,7 +153,7 @@ def draw(root, q):
 						cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
 						# do not save image (input None instead of pts) if root.recalibrated
 						if root.recalibrate == 0:
-							scr = calc_score(target_conts, *maxLoc)
+							scr = calc_score(target_conts, root.target_name, *maxLoc )
 							frame_draw_cpy = frame_draw.copy()
 							draw_score(frame_draw_cpy, scr, None)
 							pts = [(maxLoc, True, scr, None)]

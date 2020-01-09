@@ -39,7 +39,8 @@ class DialogOption(Dialog):
 		ok_b.grid(row = 1, column = 0, sticky='ns', padx=5, pady=5)
 
 	def ok(self):
-		self.parent.target = self.targets[self.option.get()]
+		self.parent.target_name = self.option.get()
+		self.parent.target_dict = self.options[self.option.get()]
 		self.top.destroy()
 
 
@@ -86,7 +87,8 @@ class GUI(Tk):
 		self.update()
 
 		# initialize target via a dialog window
-		self.target = None
+		self.target_name = None
+		self.target_dict = None
 		d_option = DialogOption(self, title="Select target")
 		self.wait_window(d_option.top)
 		self.update_image(Image.open(self.target["img_path"]))
