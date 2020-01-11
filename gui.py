@@ -39,8 +39,7 @@ class DialogOption(Dialog):
 		ok_b.grid(row = 1, column = 0, sticky='ns', padx=5, pady=5)
 
 	def ok(self):
-		self.parent.target_name = self.option.get()
-		self.parent.target_dict = self.options[self.option.get()]
+		self.parent.target = self.targets[self.option.get()]
 		self.top.destroy()
 
 
@@ -87,8 +86,7 @@ class GUI(Tk):
 		self.update()
 
 		# initialize target via a dialog window
-		self.target_name = None
-		self.target_dict = None
+		self.target = None
 		d_option = DialogOption(self, title="Select target")
 		self.wait_window(d_option.top)
 		self.update_image(Image.open(self.target["img_path"]))
@@ -134,7 +132,7 @@ class GUI(Tk):
 
 
 	def insert_entry(self, entry, pts):
-		self.shots[root.count] = pts
+		self.shots[self.count] = pts
 		self.count += 1
 		self.listbox.insert(END, entry)
 
@@ -142,7 +140,7 @@ class GUI(Tk):
 	def show_selection(self, event):
 		selection = self.listbox.curselection()
 		if selection:
-			target = cv2.imread(self.target_img)
+			target = cv2.imread(self.target["img_path"])
 			pts = self.shots[selection[0]]
 			prev = pts[0][0]
 			red = False

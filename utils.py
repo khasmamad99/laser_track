@@ -300,7 +300,7 @@ def asift(img1, img2):
 	height, width = img2.shape
 	im1Reg = cv2.warpPerspective(img1, H, (width, height))
 
-	cv2.imshow("warped", im1Reg)
-	cv2.waitKey(1)
+	cv2.imshow("align", im1Reg)
+	cv2.waitKey(5000)
 
 	return im1Reg, H

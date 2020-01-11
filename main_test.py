@@ -18,7 +18,8 @@ def webcam(q, id = 0, show = False):
 
 		if show:
 			cv2.imshow('frame', frame)
-			cv2.waitKey(1)
+			if cv2.waitKey(1) == ord('q'):
+				break
 
 		ret, x, y = detect_laser(frame, dilate=True)
 		q.put((frame, ret, x, y))
@@ -37,20 +38,23 @@ def draw(root, q):
 	offset = [0, 0]
 	prev_rb_value = root.rb_value.get()
 	prev_recalibrate = root.recalibrate
-	target = root.target_dict
+	target = root.target
 	ref_img = cv2.imread(target["img_path"])
 	target_conts = np.load(target["contours_npy"], allow_pickle=True)
 	target_center = find_center(target["center_coords"], (ref_img.shape[1], ref_img.shape[0]), (root.img_size, root.img_size)) 
 		
 	h = None
-
+	while q.empty():
+		pass
 	if not q.empty():
 		frame, _, _, _ = q.get()
 		_, h = asift(frame, ref_img)
+		root.update()
 
 	assert h is not None, "Could not initialize the homography matrix"
 
 	def update_gui():
+		print("INSIDE UPDATE GUI")
 		nonlocal prev_rb_value, prev_recalibrate, aiming, stop, prevLoc, frame_draw, pts, offset, target_center, target_conts, ref_img, h
 		while not q.empty():
 			frame, ret, x, y = q.get()
@@ -120,9 +124,9 @@ def draw(root, q):
 								root.recalibrate = 0
 							# if not recalibrating, draw the score and distance
 							else:
-								scr = calc_score(target_conts, root.target_name, *maxLoc )
+								scr = calc_score(target_conts, target["name"], *maxLoc )
 								pts.append((prevLoc, True, scr, time.time()))
-								distance = calc_distance(pts)
+								distance = calc_distance(pts, target["real_size"], (root.img_size, root.img_size))
 								draw_score(frame_draw, scr, distance)
 							root.update_image(Image.fromarray(cv2.cvtColor(frame_draw, cv2.COLOR_BGR2RGB)))
 							prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
@@ -153,7 +157,7 @@ def draw(root, q):
 						cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
 						# do not save image (input None instead of pts) if root.recalibrated
 						if root.recalibrate == 0:
-							scr = calc_score(target_conts, root.target_name, *maxLoc )
+							scr = calc_score(target_conts, target["name"], *maxLoc)
 							frame_draw_cpy = frame_draw.copy()
 							draw_score(frame_draw_cpy, scr, None)
 							pts = [(maxLoc, True, scr, None)]
@@ -169,14 +173,16 @@ def draw(root, q):
 
 				if not ret:
 					aiming = False
+			root.update()
 		root.after(1, update_gui)
+	update_gui()
 			
 
 if __name__ == "__main__":
 	root = GUI(img_size=800)
 	q = Queue()
-	p = Process(target=webcam, args=(q,))
+	p = Process(target=webcam, args=(q,0,True))
 	p.start()
-	draw(root, q)
+	root.after(1000, lambda: draw(root, q))
 	root.mainloop()
 	p.join()

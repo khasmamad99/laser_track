@@ -20,7 +20,7 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 	prev_rb_value = rb_value.value
 	prev_recalibrate = recalibrate.value
 	ref_img = cv2.imread(target["img_path"])
-	target_conts = np.load(target["contours_npy"])
+	target_conts = np.load(target["contours_npy"], allow_pickle=True)
 	target_center = target["center_coords"][0] / ref_img.shape[1] * root.img_size, target["center_coords"][1] / ref_img.shape[0] * root.img_size
 
 	cap = cv2.VideoCapture(0)
@@ -101,7 +101,7 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 							recalibrate.value = 2
 						# if not recalibrating, draw the score and distance
 						else:
-							scr = calc_score(target_conts, *prevLoc)
+							scr = calc_score(target_conts, target["name"], *prevLoc)
 							pts.append((prevLoc, True, scr, time.time()))
 							distance = calc_distance(pts, target["real_size"], (img_size, img_size))
 							draw_score(frame_draw, scr, distance)
@@ -129,7 +129,7 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 					cv2.circle(frame_draw, maxLoc, 15, (255,0,0), -1)
 					# do not save image (input None instead of pts) if recalibrated
 					if recalibrate.value == 0:
-						scr = calc_score(target_conts, *maxLoc)
+						scr = calc_score(target_conts, target["name"], *maxLoc)
 						frame_draw_cpy = frame_draw.copy()
 						draw_score(frame_draw_cpy, scr, None)
 						q.put((frame_draw_cpy, [(maxLoc, True, scr, None)]))
@@ -158,9 +158,7 @@ def update_gui():
 		root.update_image(img)
 		if pts is not None:
 			now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
-			root.shots[root.count] = pts
-			root.count += 1
-			root.insert_entry(now)
+			root.insert_entry(now, pts)
 
 	if recalibrate.value == 2:
 		img, pts = q.get()
@@ -182,7 +180,6 @@ if __name__ == "__main__":
 	q = Queue()
 	recalibrate = Value('i', root.recalibrate)
 	rb_value = Value('i', root.rb_value.get())
-	target_conts = np.load(root.target_conts, allow_pickle=True)
 	p = Process(target=webcam, args=(q, rb_value, recalibrate, root.img_size, root.target))
 	p.start()
 	update_gui()
