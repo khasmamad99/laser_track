@@ -49,14 +49,16 @@ def draw(root, q):
 	if not q.empty():
 		frame, _, _, _ = q.get()
 		_, h = asift(frame, ref_img)
-		root.update()
+		# root.update()
 
 	assert h is not None, "Could not initialize the homography matrix"
 
 	def update_gui():
 		print("INSIDE UPDATE GUI")
 		nonlocal prev_rb_value, prev_recalibrate, aiming, stop, prevLoc, frame_draw, pts, offset, target_center, target_conts, ref_img, h
-		while not q.empty():
+		for i in range(100):
+			if q.empty():
+				continue
 			frame, ret, x, y = q.get()
 			# reset offset to 0,0 before recalibration
 			if root.recalibrate == 1:

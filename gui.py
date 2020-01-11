@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 import numpy as np
 import cv2
 import json
-from utils import letterbox_image, draw_score
+from utils import letterbox_image, draw_score, calc_distance
 
 
 class Dialog:
@@ -44,7 +44,7 @@ class DialogOption(Dialog):
 
 
 
-class DialogRecalib:
+class DialogRecalib(Dialog):
 	def __init__(self, parent, title=None, text = ""):
 		Dialog.__init__(self, parent, title)
 
@@ -152,7 +152,7 @@ class GUI(Tk):
 					if pt[1]:
 						cv2.circle(target, pt[0], 15, (255,0,0), -1)
 						scr = pt[2]
-						dist = pt[3]
+						dist = calc_distance(pts, self.target["real_size"], (self.img_size, self.img_size))
 						draw_score(target, scr, dist)
 						prev = None
 						red = True
