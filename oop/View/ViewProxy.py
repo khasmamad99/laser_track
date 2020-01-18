@@ -2,8 +2,10 @@ class ViewProxy(Observable):
 
     _observers: List[Observer] = []
     _state: int = -1 
-    _current_image = None
-    _calibration: int = 0
+    current_image = None
+    calibration: int = 0
+    target_json: str = None
+
 
     def attach(self, observer: Observer) -> None:
         self._observers.append(observer)
