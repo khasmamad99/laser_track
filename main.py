@@ -35,7 +35,9 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 
 		# Display the resulting frame
 		cv2.imshow('frame', frame)
-		ret, x, y = detect_laser(frame, dilate=True)
+		# ret, x, y = detect_laser(frame, dilate=True)
+		ret, x, y = detect_laser_dl(frame)
+
 
 		# reset offset to 0,0 before recalibration
 		if recalibrate.value == 1: # synch of processes problem?
