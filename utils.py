@@ -111,7 +111,7 @@ def detect_laser_dl(frame, net = cv2.dnn.readNet("yolov3-tiny-1cls_best.weights"
 			scores = detection[5:]
 			class_id = np.argmax(scores)
 			confidence = scores[class_id]
-			if confidence > 0.2:
+			if confidence > 0.01:
 				# Object detected
 				center_x = int(detection[0] * width)
 				center_y = int(detection[1] * height)
@@ -123,14 +123,15 @@ def detect_laser_dl(frame, net = cv2.dnn.readNet("yolov3-tiny-1cls_best.weights"
 				boxes.append([x, y, w, h])
 				confidences.append(float(confidence))
 				class_ids.append(class_id)
-				indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.4, 0.3)
+				indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.4, 0.3, 1)
 				mx = -1
 				mx_i = -1
 				for i in indexes:
+					i = i[0]
 					if confidences[i] > mx:
-						mx = confidence[i]
+						mx = confidences[i]
 						mx_i = i
-				x, y, w, h = boxes[i]
+				x, y, w, h = boxes[mx_i]
 				center_x = int(x+w/2)
 				center_y = int(y+h/2)
 				return True, center_x, center_y

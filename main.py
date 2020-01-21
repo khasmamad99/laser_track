@@ -91,7 +91,7 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 					# check if laser gets detected within the next second
 					while time.time() - stop_time < 1 and not ret2:
 						_, f = cap.read()
-						ret2, x2, y2 = detect_laser(f)
+						ret2, x2, y2 = detect_laser_dl(f)
 					# if laser gets detected within the given time and prevLoc is not None
 					if ret2 and prevLoc is not None:
 						scr = None
