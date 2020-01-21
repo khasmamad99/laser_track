@@ -1,23 +1,7 @@
+import math
 import numpy as np
 import json
 import cv2
-
-
-def calc_score_circlular_1(target, x, y):
-    for i, cont in enumerate(target.conts):
-        test = cv2.pointPolygonTest(cont, (x, y), True)
-        if test >= 0:
-            return 10 - i
-    return 0
-
-
-def calc_score_human_1(target, x, y):
-    for i, cont in enumerate(target.conts):
-        test = cv2.pointPolygonTest(cont, (x, y), True)
-        if test >= 0:
-            return "Success"
-    return "Fail"
-
 
 
 class Target:
@@ -37,19 +21,17 @@ class Target:
         self.set_score_calculator()
 
 
-    def set_score_calculator(self, x, y, func=None):
+    def set_score_calculator(self, func=None):
         if func:
             self.calc_score = func
         else:
-            if self.name == "circular_1":
-                self.calc_score = calc_score_circlular1(self, x, y)
-            elif self.name == "human_1":
-                self.calc_score = calc_score_human_1(self, x, y)
-
-    
-    def calc_score(self, x, y):
-        return self.calc_score(self, x, y)
-
+            from oop.Model.ScoreCalculator import ScoreCalculator
+            method_list = [func for func in dir(ScoreCalculator) if callable(getattr(ScoreCalculator, func)) and not func.startswith("__")]
+            for method in method_list:
+                if self.name in method:
+                    self.calc_score = getattr(ScoreCalculator, method)
+                    break
+        
 
     def calc_distance(self, pts):
         dist = 0
@@ -75,10 +57,24 @@ class Target:
         pixel_w, pixel_h = self.pixel_size
         real_area = real_w * real_h
         pixel_area = pixel_h * pixel_w
-        scale = real_area / pixel_area
+        scale = math.sqrt(real_area / pixel_area)
         real_dist = dist * scale
         return real_dist
 
     
     def recalibrate(self, x, y):
         self.calibration_offset = [i - j for i, j in zip([x, y], self.center_coords)]
+
+    
+    def find_center(center_coords, org_size, new_size):
+        # finds the center of the resized target
+        center_x, center_y = center_coords
+        org_w, org_h = org_size
+        new_w, new_h = new_size
+        scale = min(new_w/org_w, new_h/org_h)
+        nw = int(org_w*scale)
+        nh = int(org_h*scale)
+        new_center_x = int(center_x*scale + (new_w-nw)/2)
+        new_center_y = int(center_y*scale + (new_h - nh)/2)
+
+        return [new_center_x, new_center_y]
