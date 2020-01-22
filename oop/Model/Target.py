@@ -7,7 +7,6 @@ import cv2
 class Target:
 
     def __init__(self, json_file, pixel_size):
-        name, img_path, conts_path, feats_path, center_coords, real_size, pixel_size
         attr_dict = json.load(json_file)
         self.name = attr_dict["name"]
         self.img_path =  attr_dict["img_path"]
@@ -17,7 +16,6 @@ class Target:
         self.center_coords = attr_dict["center_coords"]
         self.real_size =  attr_dict["real_size"]
         self.pixel_size = pixel_size
-        self.set_center()
         self.calibration_offset = [0, 0]
         self.set_score_calculator()
 
@@ -40,7 +38,7 @@ class Target:
         start_time = None
         prev_coords = None
         for pt in reversed(pts):
-            coords, is_shot, time = [pt.x, pt.y], pt.is_shot, pt.time
+            coords, is_shot, time = pt.coords, pt.is_shot, pt.time
             if is_circle and not start:
                 start = True
                 prev_coords = coords
@@ -67,15 +65,15 @@ class Target:
         self.calibration_offset = [i - j for i, j in zip([x, y], self.center_coords)]
 
     
-    def set_center(self):
+    def find_center(self, size):
         # finds the center of the resized target
         center_x, center_y = self.center_coords
         org_w, org_h = self.img.shape[1], self.img.shape[0]
-        new_w, new_h = self.pixel_size
+        new_w, new_h = size
         scale = min(new_w/org_w, new_h/org_h)
         nw = int(org_w*scale)
         nh = int(org_h*scale)
         new_center_x = int(center_x*scale + (new_w-nw)/2)
         new_center_y = int(center_y*scale + (new_h - nh)/2)
 
-        self.center_coords = [new_center_x, new_center_y]
+        return [new_center_x, new_center_y]

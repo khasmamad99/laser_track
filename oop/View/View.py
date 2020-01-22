@@ -16,6 +16,5 @@ class MainFrame:
         
         # set new frame
         # self.after(1, self.update_frame)
-        # TO DO: what if a selection is being viewed???
 
 

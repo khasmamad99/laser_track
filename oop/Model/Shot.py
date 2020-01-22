@@ -25,7 +25,7 @@ class SingleShot(Shot):
 
 
 class Point:
-    def __init__(self, x, y, time, is_shot=False):
-        self.coords = (x, y) 
+    def __init__(self, coords, time, is_shot=False):
+        self.coords = coords
         self.time = time
         self.is_shot = is_shot
