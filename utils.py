@@ -95,7 +95,7 @@ def calc_distance(pts, real_size, pixel_size):
 	return real_dist
 
 
-def detect_laser_dl(frame, net = cv2.dnn.readNet("yolov3-tiny-1cls_best.weights", "yolov3-tiny-1cls.cfg"), classes = ["laser"]):
+def detect_laser_dl(frame, net = cv2.dnn.readNet("tracker/yolov3-tiny-1cls_best.weights", "tracker/yolov3-tiny-1cls.cfg"), classes = ["laser"]):
 	layer_names = net.getLayerNames()
 	output_layers = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
