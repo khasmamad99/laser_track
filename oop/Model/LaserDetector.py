@@ -1,6 +1,9 @@
+import cv2
+import numpy as np
+
 class LaserDetector:
 
-    def bg_subtraction(image, dilate=False, erode=False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
+    def bg_subtraction(self, image, dilate=False, erode=False, subtractor=cv2.bgsegm.createBackgroundSubtractorMOG()):
         # resize image
         h, w, c = image.shape
         scale = min(640/w, 480/h)
@@ -43,5 +46,5 @@ class LaserDetector:
                 return False, None, None
 
     
-    def dl_object_detection(image):
-        
+    def dl_object_detection(self, image):
+        pass

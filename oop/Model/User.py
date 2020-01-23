@@ -1,4 +1,7 @@
-# from oop.Model.Shot import Shot
+from oop.Model.Shot import Shot
+from oop.Model.Observable import Observable
+from oop.Model.Observer import Observer
+from typing import List
 
 class User(Observable):
 
@@ -23,4 +26,4 @@ class User(Observable):
 
     def insert_shot(self, shot: Shot) -> None:
         self._shots.append(shot)
-        self.notify()
+        # self.notify()

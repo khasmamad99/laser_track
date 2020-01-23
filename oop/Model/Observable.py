@@ -1,4 +1,5 @@
-from abc import ABC
+from abc import ABC, abstractmethod
+from oop.Model.Observer import Observer
 
 
 class Observable(ABC):

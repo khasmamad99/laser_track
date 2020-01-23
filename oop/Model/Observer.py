@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class Observer(ABC):
@@ -7,7 +7,7 @@ class Observer(ABC):
     """
 
     @abstractmethod
-    def update(self, subject: Subject) -> None:
+    def update(self, subject) -> None:
         """
         Receive update from subject.
         """

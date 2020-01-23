@@ -2,6 +2,8 @@ from multiprocessing import Process, Queue, Value, Manager
 import cv2
 import time
 
+
+from oop.Controller.ViewController import ViewController
 from oop.Model.LaserDetector import LaserDetector
 from oop.Model.Target import Target
 from oop.Model.Shot import *
@@ -10,42 +12,58 @@ from oop.Controller.utils import *
 
 class Controller:
 
-	def __init__(self, user, view_contoller):
+	def __init__(self, user):
 		self.user = user
-		self.view_contoller = view_contoller
+		self.view_controller = ViewController(self)
 		self.detect_laser = LaserDetector.dl_object_detection
 		self.inq = Queue()
 		self.outq = Queue()
 
-		target_dict = self.view_control.init_target()
-		self.target = Target(target_dict)
+		target_dict = self.view_controller.init_target()
+		webcam_id = self.set_webcam_id()
+		self.cap = cv2.VideoCapture(0)
+		self.target = Target(target_dict, (self.cap.get(3), self.cap.get(4)))
 		self.target_size = 800      # WARNING: needs to be fixed
 
-		self.view_control = Manager.Namespace()
+		self.view_control = Manager().Namespace()
 		self.view_control.frame = None
 		self.view_control.shot = None
-		self.shot_control = Value(int)
+		self.shot_control = Value('i')
 		self.shot_control.value = self.view_controller.get_shot_type() # WARNING: check naming
-		self.calib_control = Value(bool)
+		self.calib_control = Value('i')
 		self.calib_control = False
+
+		# configure the processes and start them here
+		webcam = Process(target=self.webcam)
+		tr_shot = Process(target=self.get_trackshot)
+		sg_shot = Process(target=self.get_singleshot)
+		update = Process(target=self.update_attrs)
+		webcam.start()
+		tr_shot.start()
+		sg_shot.start()
+		update.start()
+		
+		webcam.join()
+		tr_shot.join()
+		sg_shot.join()
+		update.join()
+		
 
 
 
 		
 
 	def webcam(self):
-		webcam_id = self.set_webcam_id()
-		self.cap = cv2.VideoCapture(webcam_id)
 		
 		# initialize homogrpahy matrix
-		_, frame = cap.read()
-		_, self.h = self.asift(frame, self.target.img)
+		_, frame = self.cap.read()
+		_, self.h = asift(frame, self.target.img)
 		assert self.h is not None, "Could not initialize homography matrix"
 
 		prev_x, prev_y = None, None
 		detected = [False, False, False]
 		while(True):
-			frame, ret = cap.read()
+			frame, ret = self.cap.read()
 			# assert ret, "Could not read the frame"
 			ret, x, y = self.detect_laser(frame)
 			detected = detected.append(ret)[1:]
@@ -145,8 +163,8 @@ class Controller:
 					self.outq.put((draw_frame, shot))
 				if aiming and coords is None:
 					aiming = False
-			elif draw_frame != self.target_img:
-				draw_frame = self.target_img.copy()
+			elif not np.array_equal(draw_frame, self.target.img):
+				draw_frame = self.target.img.copy()
 	
 
 	def update_attrs(self):
@@ -176,9 +194,8 @@ class Controller:
 		self.shot_control.value = self.view_contoller.get_shot_type()
 
 		
-	def view_selection(self, event):
+	def show_selection(self):
 		self.shot_control.value = 0
-		self.view_controller.enable_new_shot_button()
 		# clear the out queue
 		while not self.outq.empty():
 			self.contoller.outq.get()
@@ -211,7 +228,7 @@ class Controller:
 			self.outq.put((target, None))
 
 	
-	def recalibrate(self, event):
+	def recalibrate(self):
 		self.shot_control = 0
 		while not self.outq.empty():
 			self.contoller.outq.get()

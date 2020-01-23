@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter.ttk import *
-from PIL import Image, ImageTk
+from PIL import Image as Img
+from PIL import ImageTk
 import cv2
 
 from oop.View.Dialog import *
@@ -17,17 +18,16 @@ class MainPage(tk.Frame):
 		self.columnconfigure(3, weight=1, minsize=int((self.img_size + 50)/4))
 		self.columnconfigure(4, weight=1, minsize=int((self.img_size + 50)/4))
 		self.columnconfigure(5, weight=1, minsize=int((self.img_size+50)/4))
-		self.rowconfigure(0, weight=1, minsize=int(img_size + 100))
+		self.rowconfigure(0, weight=1, minsize=int(self.img_size + 100))
 		self.rowconfigure(1, weight=1, minsize=50)
 
 		# initialize widgets
 		self.photo_img = None
-		self.img_size = img_size
 		self.listbox = self.init_listbox()
-		self.listbox.bind('<Double-1>', self.contoller.show_selection)
+		self.listbox.bind('<Double-1>', self.controller.show_selection)
 		self.img_panel = self.init_img_panel()
 		self.init_radiobuttons()
-		self.new_shot_button = Button(self, text="New shot", state="disabled", command=self.controller.get_new_shot())
+		self.new_shot_button = Button(self, text="New shot", state="disabled", command=self.controller.get_new_shot)
 		Button(self, text="Recalibrate", command=self.controller.recalibrate).grid(row=1, column=4, sticky='nsew')
 		self.update()
 
@@ -62,7 +62,7 @@ class MainPage(tk.Frame):
 
 
 	def init_img_panel(self):
-		self.photo_img = ImageTk.PhotoImage(letterbox_image(Image.fromarray(cv2.imread("target/data/init_bg.jpg", 0)), (self.img_size, self.img_size)))
+		self.photo_img = ImageTk.PhotoImage(letterbox_image(Img.fromarray(cv2.imread("target/data/init_bg.jpg", 0)), (self.img_size, self.img_size)))
 		panel = Label(self, image=self.photo_img, borderwidth=20)
 		panel.image = self.photo_img
 		panel.grid(row=0, column=2, columnspan=4, sticky='nsew')

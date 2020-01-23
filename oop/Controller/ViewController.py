@@ -3,7 +3,7 @@ from tkinter import font  as tkfont
 import datetime
 
 from oop.View.MainPage import MainPage
-from oop.View.StartPage import StartPage
+# from oop.View.StartPage import StartPage
 from oop.View.Dialog import *
 
 
@@ -23,7 +23,7 @@ class ViewController(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
         
         self.frames = {}
-        for F in (MainPage):
+        for F in (MainPage,):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -41,11 +41,15 @@ class ViewController(tk.Tk):
         frame = self.frames[page_name]
         frame.tkraise()
 
+    def show_selection(self, event):
+        self.frames["MainPage"].new_shot_button.config(state="normal")
+        self.contoller.show_selection()
+
 
     def init_target(self):
         self.target_dict = None
         self.wait_window(DialogOption(self, title="Select Target").top)
-        return target_dict
+        return self.target_dict
 
 
     def update_attrs(self):
@@ -54,6 +58,8 @@ class ViewController(tk.Tk):
         page.update_image(frame)
         if shot:
             self.page.insert_entry(datetime.now().strftime("%H:%M:%S %d/%m/%Y"))
+
+        self.after(1, self.update_attrs)
 
 
     def get_listbox_selection(self):
@@ -69,3 +75,6 @@ class ViewController(tk.Tk):
 
     def enable_new_shot_button(self):
         self.frames["MainPage"].new_shot_button.config(state="disabled")
+
+    def recalibrate(self, event):
+        self.contoller.recalibrate()
