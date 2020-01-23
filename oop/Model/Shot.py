@@ -1,5 +1,5 @@
 class Shot:
-    def __init__(self, target_img_path, score=None):
+    def __init__(self, target_img_path, coords=None, score=None):
         self.score = score
         self.coords = coords
         self.target_img_path = target_img_path
@@ -7,7 +7,7 @@ class Shot:
 
 
 class TrackShot(Shot):
-    def __init__(self, target_img_path, pts=[], score=None, distance=None):
+    def __init__(self, target_img_path, coords=None, pts=[], score=None, distance=None):
         Shot.__init__(self, score, coords)
         self.pts = pts
         self.distance = distance

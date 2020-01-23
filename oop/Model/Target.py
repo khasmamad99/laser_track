@@ -6,16 +6,15 @@ import cv2
 
 class Target:
 
-    def __init__(self, json_file, pixel_size):
-        attr_dict = json.load(json_file)
-        self.name = attr_dict["name"]
-        self.img_path =  attr_dict["img_path"]
-        self.img = cv2.imread(attr_dict["img_path"])
-        self.conts = np.load(attr_dict["conts_path"], allow_pickle=True)
-        self.feats = np.load(attr_dict["feats_path"], allow_pickle=True)
-        self.center_coords = attr_dict["center_coords"]
-        self.real_size =  attr_dict["real_size"]
-        self.pixel_size = pixel_size
+    def __init__(self, target_dict):
+        self.name = target_dict["name"]
+        self.img_path =  target_dict["img_path"]
+        self.img = cv2.imread(target_dict["img_path"])
+        self.conts = np.load(target_dict["conts_path"], allow_pickle=True)
+        self.feats = np.load(target_dict["feats_path"], allow_pickle=True)
+        self.center_coords = target_dict["center_coords"]
+        self.real_size =  target_dict["real_size"]
+        self.pixel_size = target_dict["pixel_size"]
         self.calibration_offset = [0, 0]
         self.set_score_calculator()
 

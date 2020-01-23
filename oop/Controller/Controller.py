@@ -7,21 +7,26 @@ from oop.Model.Shot import *
 
 
 class Controller:
-    def __init__(self, target, user):
+    def __init__(self, user, view_contoller):
         self.target = target
         self.user = user
         self.detect_laser = LaserDetector.dl_object_detection
         self.inq = Queue()
         self.outq = Queue()
 
-        self.view_attrs = Manager.Namespace()
-        self.view_attrs.frame = None
-        self.view_attrs.shot = None
+        self.view_control = Manager.Namespace()
+        self.view_control.frame = None
+        self.view_control.shot = None
         self.shot_control = Value(int)
         self.shot_control.value = target.shot_control.get()     # WARNING: check naming
         self.calib_control = Value(bool)
         self.calib_control = False
-        self.target_size = 600      # WARNING: needs to be fixed
+
+        target_dict = self.view_control.init_target()
+
+        self.target_size = 800      # WARNING: needs to be fixed
+
+        
 
     def webcam(self):
         webcam_id = self.set_webcam_id()
@@ -136,9 +141,17 @@ class Controller:
             if not self.outq.empty():
                 frame, shot = self.outq.get()    # WARNING: check naming
                 self.view_attributes.frame = frame
-                self.view_attributes.shot = None
-                if not self.calib_control.value:
+                if self.calib_control.value:
+                    self.shot_control.value = 0
+                    while not self.outq.empty():
+                        outq.get()
+                    self.view_attributes.shot = None
+                    self.set_calibration_offset(*shot.coords)
+                    # display a pop up which destroys itself after 3 secs
+                    # self.shot_control.value = self.view. rb value
+                else:
                     self.view_attributes.shot = shot
+
                     
 
     def view_selection(self, event):
@@ -146,7 +159,7 @@ class Controller:
         # TO DO: enable the "new shot" button
         # clear the out queue
         while not self.outq.empty():
-            q.get()
+            outq.get()
         self.display_selection()
 
 
@@ -185,16 +198,13 @@ class Controller:
 
     
     def recalibrate(self, event):
+        self.shot_control = 0
         # clear the queue
+        self.outq.put((self.target.img, None))
         self.target.calibration_offset = [0,0]
         # display a pop up
-
-
-    def set_calib_control(self, val):
-        if self.calib_control.val != val:
-            self.view.update_frame(self.target.img)
-
-    
+        self.calib_control = True
+        # self.shot_control = self.view. radiobutton values
 
 
     def set_webcam_id(self):
@@ -239,14 +249,15 @@ class Controller:
             return x, y
 
     
-    def recalibrate(self, x, y):
-        real_center_coords = warped2real(*self.target.center_coords)
+    def set_calibration_offset(self, x, y):
+        real_center_coords = self.warped2real(*self.target.center_coords)
         self.target.calibration_offset = [i - j for i, j in zip([x, y], real_center_coords)]
 
 
-    def draw_shot_stats(self, frame, shot):
-        text = str(shot)
+    def draw_shot_stats(self, frame, shot):)
         org_y = frame.shape[0] - 10
         org_x = 10
-        cv2.putText(frame, text, (int(org_x), int(org_y)),
+        cv2.putText(frame, str(shot), (int(org_x), int(org_y)),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+
+
