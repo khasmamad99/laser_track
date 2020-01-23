@@ -12,8 +12,8 @@ class User(Observable):
     def detach(self, observer: Observer) -> None:
         try:
             self._observers.remove(observer)
-        except ValueError, e:
-            print("Could not detach the observer:", e)
+        except ValueError:
+            print("Could not detach the observer")
         
 
     def notify(self) -> None:

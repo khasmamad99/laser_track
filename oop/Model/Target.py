@@ -38,7 +38,7 @@ class Target:
         prev_coords = None
         for pt in reversed(pts):
             coords, is_shot, time = pt.coords, pt.is_shot, pt.time
-            if is_circle and not start:
+            if is_shot and not start:
                 start = True
                 prev_coords = coords
                 start_time = time
@@ -56,7 +56,7 @@ class Target:
         real_area = real_w * real_h
         pixel_area = pixel_h * pixel_w
         scale = math.sqrt(real_area / pixel_area)
-        real_dist = dist * scale
+        real_dist = pixel_distance * scale
         return real_dist
 
     

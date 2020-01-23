@@ -1,5 +1,6 @@
 import tkinter as tk                
 from tkinter import font  as tkfont
+import datetime
 
 from oop.View.MainPage import MainPage
 from oop.View.StartPage import StartPage
@@ -22,9 +23,9 @@ class ViewController(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
         
         self.frames = {}
-        for F in (StartPage, MainPage):
+        for F in (MainPage):
             page_name = F.__name__
-            frame = F(parent=container, controller=self.controller)
+            frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
 
             # put all of the pages in the same location;
@@ -32,7 +33,7 @@ class ViewController(tk.Tk):
             # will be the one that is visible.
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame("StartPage")
+        self.show_frame("MainPage")
 
 
     def show_frame(self, page_name):
@@ -40,7 +41,31 @@ class ViewController(tk.Tk):
         frame = self.frames[page_name]
         frame.tkraise()
 
+
     def init_target(self):
         self.target_dict = None
         self.wait_window(DialogOption(self, title="Select Target").top)
         return target_dict
+
+
+    def update_attrs(self):
+        shot, frame = self.contoller.view_control.shot, self.contoller.view_control.frame
+        page = self.frames["MainPage"]
+        page.update_image(frame)
+        if shot:
+            self.page.insert_entry(datetime.now().strftime("%H:%M:%S %d/%m/%Y"))
+
+
+    def get_listbox_selection(self):
+        return self.frames["MainPage"].listbox.curselection()
+
+    
+    def get_shot_type(self):
+        return self.frames["MainPage"].rb_value.get()
+
+    def get_new_shot(self, event):
+        self.frames["MainPage"].new_shot_button.config(state="disabled")
+        self.contoller.get_new_shot()
+
+    def enable_new_shot_button(self):
+        self.frames["MainPage"].new_shot_button.config(state="disabled")
