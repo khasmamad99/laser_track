@@ -21,7 +21,7 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 	prev_recalibrate = recalibrate.value
 	ref_img = cv2.imread(target["img_path"])
 	target_conts = np.load(target["contours_npy"], allow_pickle=True)
-	target_center = target["center_coords"][0] / ref_img.shape[1] * root.img_size, target["center_coords"][1] / ref_img.shape[0] * root.img_size
+	target_center = target["center_coords"][0] / ref_img.shape[1] * img_size, target["center_coords"][1] / ref_img.shape[0] * img_size
 
 	cap = cv2.VideoCapture(0)
 	_, frame = cap.read()
