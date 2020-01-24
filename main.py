@@ -11,21 +11,22 @@ from utils import *
 
 
 def webcam(q, rb_value, recalibrate, img_size, target):
-	aiming = False
-	stop = False
-	prevLoc = None
-	frame_draw = None
-	pts = []
-	offset = [0, 0]
-	prev_rb_value = rb_value.value
-	prev_recalibrate = recalibrate.value
-	ref_img = cv2.imread(target["img_path"])
-	target_conts = np.load(target["contours_npy"], allow_pickle=True)
-	target_center = target["center_coords"][0] / ref_img.shape[1] * img_size, target["center_coords"][1] / ref_img.shape[0] * img_size
+	# initialize control variables
+	aiming = False	# if true then shooting has already started/laser was visible
+	stop = False	# if true then laser became unvisible after a while/trigger is pulled
+	prevLoc = None	# stores the previous location of the laser to be able to draw a line
+	frame_draw = None	# this will store a copy of the target image and the laser will be drawn on this one
+	pts = []		# a list to store the points corresponding to a particular shot
+	offset = [0, 0]	# calibration offset, initially is set to [0,0]
+	prev_rb_value = rb_value.value	# previous value of the rb_value, is used to detect changes in the rb_value (rb_value stands for radiobutton value and shows whether track or shot is selected)
+	prev_recalibrate = recalibrate.value	# this shows whether the recalibration mode is on
+	ref_img = cv2.imread(target["img_path"])	# ref_img is the image of the target
+	target_conts = np.load(target["contours_npy"], allow_pickle=True)	# contours of the target is loaded
+	target_center = target["center_coords"][0] / ref_img.shape[1] * img_size, target["center_coords"][1] / ref_img.shape[0] * img_size	# the center of the target calculated for the resized target image
 
 	cap = cv2.VideoCapture(0)
 	_, frame = cap.read()
-	_, h = asift(frame, ref_img)
+	_, h = asift(frame, ref_img)	# initializing the homography matrix
 	assert h is not None, "Could not initialize the homography matrix"
 
 
@@ -36,11 +37,11 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 		# Display the resulting frame
 		cv2.imshow('frame', frame)
 		# ret, x, y = detect_laser(frame, dilate=True)
-		ret, x, y = detect_laser_dl(frame)
+		ret, x, y = detect_laser_dl(frame)	# ret: laser is seen; x, y: coordinates of the laser; if ret is false, then x=y=None 
 
 
 		# reset offset to 0,0 before recalibration
-		if recalibrate.value == 1: # synch of processes problem?
+		if recalibrate.value == 1:
 			offset = [0,0]
 
 		# rb_value (RadioButton value)
@@ -71,7 +72,8 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 			if aiming:
 				# laser is currently visible/is detected
 				if ret:
-					pts.append((maxLoc, False, None, time.time()))
+					# pts is a list of tuples: coordinates of the point (e.g. maxLoc), whether it's the shot (e.g. False), score of the shot (e.g. None if it's not a shot), time of the shot
+					pts.append((maxLoc, False, None, time.time())) 
 					# if the previous location is None then start drawing from the current maxLoc
 					# laser can go out of the scope of the warped image plane
 					# in this case drawing is started from where the laser enters the warped image plane
@@ -109,19 +111,23 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 							draw_score(frame_draw, scr, distance)
 						q.put((frame_draw, None))
 						prevLoc = get_warped_coords(x2, y2, frame, ref_img, h)
+					# if laser is not detected within the given time span then reset everything, do not store the shot
 					else:
 						aiming = False
 						stop = False
 						pts = []
 				else:
 					if recalibrate.value == 0:
+						# if not recalibrating, put pts inside the queue to add it to the listbox
 						q.put((frame_draw, pts))
 					else:
+						# if recalibrating, put None instead of pts to not add it to the listbox
 						q.put((frame_draw, None))
 					pts = []
 					frame_draw = None
 					stop = False
 					aiming = False
+		# one-shot
 		elif rb_value.value == 0:
 			if not aiming and ret:
 				aiming = True
@@ -154,6 +160,7 @@ def webcam(q, rb_value, recalibrate, img_size, target):
 
 
 def update_gui():
+	# queue is read inside a while loop and gui is updated with the values obtained from the queue
 	while not q.empty():
 		img, pts = q.get()
 		img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
@@ -173,16 +180,16 @@ def update_gui():
 	rb_value.value = root.rb_value.get()
 	recalibrate.value = root.recalibrate # 0 : not recalibrating; 1 : recalibrating; 2 : recalibration done
 
-	root.after(1, update_gui)
+	root.after(1, update_gui) # call this function after 1 ms, creates an infinite loop
 
 
 
 if __name__ == "__main__":
 	root = GUI(img_size=800)
 	q = Queue()
-	recalibrate = Value('i', root.recalibrate)
-	rb_value = Value('i', root.rb_value.get())
-	p = Process(target=webcam, args=(q, rb_value, recalibrate, root.img_size, root.target))
+	recalibrate = Value('i', root.recalibrate) # a shared memory variable to determine whether the recalibration mode is on
+	rb_value = Value('i', root.rb_value.get())	# a shared memory variable to determine the mode of shot (track or one shot) 
+	p = Process(target=webcam, args=(q, rb_value, recalibrate, root.img_size, root.target)) # call webcam function in a separate process
 	p.start()
 	update_gui()
 	root.mainloop()
