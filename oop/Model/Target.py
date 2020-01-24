@@ -6,7 +6,7 @@ import cv2
 
 class Target:
 
-    def __init__(self, target_dict, pixel_size):
+    def __init__(self, target_dict):
         self.name = target_dict["name"]
         self.img_path =  target_dict["img_path"]
         self.img = cv2.imread(target_dict["img_path"])
@@ -14,7 +14,7 @@ class Target:
         self.feats = np.load(target_dict["feats_path"], allow_pickle=True)
         self.center_coords = target_dict["center_coords"]
         self.real_size =  target_dict["real_size"]
-        self.pixel_size = pixel_size
+        self.pixel_size = (self.img.shape[1], self.img.shape[0])
         self.calibration_offset = [0, 0]
         self.set_score_calculator()
 

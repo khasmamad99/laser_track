@@ -22,7 +22,7 @@ class Controller:
 		target_dict = self.view_controller.init_target()
 		webcam_id = self.set_webcam_id()
 		self.cap = cv2.VideoCapture(0)
-		self.target = Target(target_dict, (self.cap.get(3), self.cap.get(4)))
+		self.target = Target(target_dict)
 		self.target_size = 800      # WARNING: needs to be fixed
 		self.outq.put((self.target.img, None))
 		# initialize homogrpahy matrix
@@ -103,7 +103,8 @@ class Controller:
 						prev_coords = coords
 						draw_frame = self.target.img.copy()
 						print("self.target.img_path", self.target.img_path)
-						shot = TrackShot(target_img_path=self.target.img_path)
+						shot = None
+						shot = TrackShot(target_img_path=self.target.img_path, pts=[])
 					
 				if aiming:
 					if ret:
@@ -211,10 +212,12 @@ class Controller:
 
 	def display_selection(self):
 		selection = self.view_controller.get_listbox_selection()
+		print("SELECTION", selection)
 		# print(selection)
 		if selection is not None:
 			shot = self.user._shots[selection[0]]
-			target = cv2.imread(shot.target_img_path)
+			print(shot.pts)
+			draw_frame = cv2.imread(shot.target_img_path)
 			pts = shot.pts
 			prev = pts[0].coords
 			red = False
@@ -224,16 +227,16 @@ class Controller:
 					prev = pt.coords
 				if pt.coords is not None and prev is not None:
 					if pt.is_shot:
-						cv2.circle(target, pt.coords, 15, (255,0,0), -1)
-						self.draw_shot_stats(target, shot)
+						cv2.circle(draw_frame, pt.coords, 15, (255,0,0), -1)
+						self.draw_shot_stats(draw_frame, shot)
 						prev = None
 						red = True
 					else:
-						if red: cv2.line(target, prev, pt.coords, (0,0,255),2)
-						else: cv2.line(target, prev, pt.coords, (0,255,0), 2)
+						if red: cv2.line(draw_frame, prev, pt.coords, (0,0,255),2)
+						else: cv2.line(draw_frame, prev, pt.coords, (0,255,0), 2)
 						prev = pt.coords
 
-			self.outq.put((target, None))
+			self.outq.put((draw_frame, None))
 
 	
 	def recalibrate(self):
