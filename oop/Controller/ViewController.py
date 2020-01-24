@@ -11,7 +11,7 @@ class ViewController(tk.Tk):
 
     def __init__(self, controller, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-        self.contoller = controller
+        self.controller = controller
         self.title_font = tkfont.Font(family='Helvetica', size=18, weight="bold", slant="italic")
 
         # the container is where we'll stack a bunch of frames
@@ -42,8 +42,9 @@ class ViewController(tk.Tk):
         frame.tkraise()
 
     def show_selection(self, event):
+        print("VIEW CONTROLLER SHOW SELECTION CALLED")
         self.frames["MainPage"].new_shot_button.config(state="normal")
-        self.contoller.show_selection()
+        self.controller.show_selection()
 
 
     def init_target(self):
@@ -53,11 +54,14 @@ class ViewController(tk.Tk):
 
 
     def update_attrs(self):
-        shot, frame = self.contoller.view_control.shot, self.contoller.view_control.frame
+        shot, frame = self.controller.view_control.shot, self.controller.view_control.frame
         page = self.frames["MainPage"]
-        page.update_image(frame)
+        if frame is not None:
+            page.update_image(frame)
         if shot:
-            self.page.insert_entry(datetime.now().strftime("%H:%M:%S %d/%m/%Y"))
+            self.controller.user.insert_shot(shot)
+            page.insert_entry(datetime.datetime.now().strftime("%H:%M:%S %d/%m/%Y"))
+            self.controller.view_control.shot = None
 
         self.after(1, self.update_attrs)
 
@@ -69,12 +73,12 @@ class ViewController(tk.Tk):
     def get_shot_type(self):
         return self.frames["MainPage"].rb_value.get()
 
-    def get_new_shot(self, event):
+    def get_new_shot(self):
         self.frames["MainPage"].new_shot_button.config(state="disabled")
-        self.contoller.get_new_shot()
+        self.controller.get_new_shot()
 
     def enable_new_shot_button(self):
         self.frames["MainPage"].new_shot_button.config(state="disabled")
 
-    def recalibrate(self, event):
-        self.contoller.recalibrate()
+    def recalibrate(self):
+        self.controller.recalibrate()

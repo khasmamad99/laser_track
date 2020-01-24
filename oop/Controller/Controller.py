@@ -24,6 +24,11 @@ class Controller:
 		self.cap = cv2.VideoCapture(0)
 		self.target = Target(target_dict, (self.cap.get(3), self.cap.get(4)))
 		self.target_size = 800      # WARNING: needs to be fixed
+		self.outq.put((self.target.img, None))
+		# initialize homogrpahy matrix
+		_, frame = self.cap.read()
+		_, self.h = asift(frame, self.target.img)
+		assert self.h is not None, "Could not initialize homography matrix"
 
 		self.view_control = Manager().Namespace()
 		self.view_control.frame = None
@@ -31,7 +36,9 @@ class Controller:
 		self.shot_control = Value('i')
 		self.shot_control.value = self.view_controller.get_shot_type() # WARNING: check naming
 		self.calib_control = Value('i')
-		self.calib_control = False
+		self.calib_control.value = False
+		print(self.shot_control.value)
+
 
 		# configure the processes and start them here
 		webcam = Process(target=self.webcam)
@@ -42,7 +49,8 @@ class Controller:
 		tr_shot.start()
 		sg_shot.start()
 		update.start()
-		
+		self.view_controller.after(1000, self.view_controller.update_attrs)
+		self.view_controller.mainloop()
 		webcam.join()
 		tr_shot.join()
 		sg_shot.join()
@@ -54,19 +62,15 @@ class Controller:
 		
 
 	def webcam(self):
-		
-		# initialize homogrpahy matrix
-		_, frame = self.cap.read()
-		_, self.h = asift(frame, self.target.img)
-		assert self.h is not None, "Could not initialize homography matrix"
 
 		prev_x, prev_y = None, None
 		detected = [False, False, False]
 		while(True):
-			frame, ret = self.cap.read()
+			ret, frame = self.cap.read()
 			# assert ret, "Could not read the frame"
-			ret, x, y = self.detect_laser(frame)
-			detected = detected.append(ret)[1:]
+			ret, x, y = self.detect_laser(frame, frame)
+			detected.append(ret)
+			detected = detected[1:]
 			if ret:
 				self.inq.put((x, y))
 				prev_x, prev_y = x, y
@@ -98,7 +102,8 @@ class Controller:
 						aiming = True
 						prev_coords = coords
 						draw_frame = self.target.img.copy()
-						shot = TrackShot(self.target.img_path)
+						print("self.target.img_path", self.target.img_path)
+						shot = TrackShot(target_img_path=self.target.img_path)
 					
 				if aiming:
 					if ret:
@@ -111,27 +116,28 @@ class Controller:
 							if stop: cv2.line(draw_frame, prev_coords, coords, (0,0,255), 2)
 							else: cv2.line(draw_frame, prev_coords, coords, (0,255,0), 2)
 						prev_coords = coords
-						outq.put((draw_frame, None))
+						self.outq.put((draw_frame, None))
 					elif not stop:
 						stop = True
 						stop_time = time.time()
 						ret2 = False
 						while time.time() - stop_time < 1 and not ret2:
-							if not q.empty():
-								coords2 = q.get()  
+							if not self.inq.empty():
+								coords2 = self.inq.get()  
 								ret2 = coords2 is not None
 						if ret2 and prev_coords is not None:
-							point = Point(coords, time.time(), True)
+							point = Point(prev_coords, time.time(), True)
+							shot.pts.append(point)
 							cv2.circle(draw_frame, prev_coords, 15, (255, 0, 0), -1)
-							shot.score = self.target.calc_score(self.target, *coords)
+							shot.score = self.target.calc_score(self.target, *prev_coords)
 							shot.distance = self.target.calc_distance(shot.pts)
-							self.draw_stats(draw_frame, shot)
-							outq.put((draw_frame, None))
+							self.draw_shot_stats(draw_frame, shot)
+							self.outq.put((draw_frame, None))
 						else:
 							aiming = False
 							stop = False
 					else:
-						outq.put((draw_frame, shot))
+						self.outq.put((draw_frame, shot))
 						aiming = False
 						stop = False
 
@@ -157,9 +163,9 @@ class Controller:
 						aiming = False
 						continue
 					score = self.target.calc_score(self.target, *coords)
-					shot = SingleShot(score, self.target.img_path)
+					shot = SingleShot(self.target.img_path, score=score)
 					cv2.circle(draw_frame, coords, 15, (255,0,0), -1)
-					self.draw_stats(draw_frame, shot)
+					self.draw_shot_stats(draw_frame, shot)
 					self.outq.put((draw_frame, shot))
 				if aiming and coords is None:
 					aiming = False
@@ -179,10 +185,10 @@ class Controller:
 					self.view_control.shot = None
 					self.set_calibration_offset(*shot.coords)
 					# display a pop up which destroys itself after 3 secs
-					self.shot_control.value = self.view_contoller.get_shot_type()
+					self.shot_control.value = self.view_controller.get_shot_type()
 				else:
 					self.view_control.shot = shot
-					self.user.insert_shot(shot)
+					
 
 
 
@@ -191,22 +197,24 @@ class Controller:
 			outq.get()
 		# clear display
 		self.outq.put((self.target.img, None))
-		self.shot_control.value = self.view_contoller.get_shot_type()
+		self.shot_control.value = self.view_controller.get_shot_type()
 
 		
 	def show_selection(self):
 		self.shot_control.value = 0
 		# clear the out queue
 		while not self.outq.empty():
-			self.contoller.outq.get()
+			self.outq.get()
+		self.outq.put((self.target.img, None))
 		self.display_selection()
 
 
 	def display_selection(self):
-		selection = self.view_contoller.get_listbox_selection()
-		if selection:
+		selection = self.view_controller.get_listbox_selection()
+		# print(selection)
+		if selection is not None:
 			shot = self.user._shots[selection[0]]
-			target = cv2.imread(shot.target_img)
+			target = cv2.imread(shot.target_img_path)
 			pts = shot.pts
 			prev = pts[0].coords
 			red = False
@@ -216,8 +224,8 @@ class Controller:
 					prev = pt.coords
 				if pt.coords is not None and prev is not None:
 					if pt.is_shot:
-						cv2.circle(target, pt[0], 15, (255,0,0), -1)
-						self.draw_stats(target, shot)
+						cv2.circle(target, pt.coords, 15, (255,0,0), -1)
+						self.draw_shot_stats(target, shot)
 						prev = None
 						red = True
 					else:
@@ -231,12 +239,12 @@ class Controller:
 	def recalibrate(self):
 		self.shot_control = 0
 		while not self.outq.empty():
-			self.contoller.outq.get()
+			self.outq.get()
 		self.outq.put((self.target.img, None))
 		self.target.calibration_offset = [0,0]
 		# display a pop up
 		self.calib_control = True
-		self.shot_control.value = self.view_contoller.get_shot_type()
+		self.shot_control.value = self.view_controller.get_shot_type()
 
 
 	def set_webcam_id(self):
@@ -254,7 +262,7 @@ class Controller:
 	
 	def real2warped(self, x, y):
 		# create a zero matrix with the same shape as the original image
-		m = np.zeros((self.cap.get(4), self.cap.get(3), 3))
+		m = np.zeros((int(self.cap.get(4)), int(self.cap.get(3)), 3))
 		# set the values of the elements in xth row and yth column to 255 in all image channels
 		m[y, x, :] = 255
 		# get the transformed image matrix

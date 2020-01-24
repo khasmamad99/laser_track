@@ -7,8 +7,8 @@ class Shot:
 
 
 class TrackShot(Shot):
-    def __init__(self, target_img_path, coords=None, pts=[], score=None, distance=None):
-        Shot.__init__(self, score, coords)
+    def __init__(self, target_img_path, coords=None, score=None, distance=None, pts=[]):
+        Shot.__init__(self, target_img_path, coords=coords, score=score)
         self.pts = pts
         self.distance = distance
 

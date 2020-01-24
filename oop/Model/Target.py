@@ -46,8 +46,8 @@ class Target:
                 dist += math.sqrt(math.pow((coords[0] - prev_coords[0]),
                                         2) + math.pow((coords[1] - prev_coords[1]), 2))
             prev_coords = coords
-
-        return pixel2mm(dist)
+        print(dist)
+        return self.pixel2mm(dist)
 
 
     def pixel2mm(self, pixel_distance):
@@ -55,7 +55,7 @@ class Target:
         pixel_w, pixel_h = self.pixel_size
         real_area = real_w * real_h
         pixel_area = pixel_h * pixel_w
-        scale = math.sqrt(real_area / pixel_area)
+        scale = real_area / pixel_area
         real_dist = pixel_distance * scale
         return real_dist
 

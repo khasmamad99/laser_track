@@ -28,18 +28,20 @@ class MainPage(tk.Frame):
 		self.img_panel = self.init_img_panel()
 		self.init_radiobuttons()
 		self.new_shot_button = Button(self, text="New shot", state="disabled", command=self.controller.get_new_shot)
+		self.new_shot_button.grid(row=1, column=5, sticky='nsew')
 		Button(self, text="Recalibrate", command=self.controller.recalibrate).grid(row=1, column=4, sticky='nsew')
 		self.update()
 
 	
 	def update_image(self, img):
+		img = Img.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 		self.photo_img = ImageTk.PhotoImage(letterbox_image(
 			 img, (self.img_size, self.img_size)))
 		self.img_panel.configure(image=self.photo_img)
 		self.img_panel.image = self.photo_img
 
 
-	def insert_entry(self, entry, pts):
+	def insert_entry(self, entry):
 		self.listbox.insert(END, entry)
 
 
